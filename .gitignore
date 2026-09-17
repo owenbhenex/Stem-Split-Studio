@@ -1,0 +1,9 @@
+venv/
+.venv/
+__pycache__/
+*.pyc
+web_stems/
+web_uploads/
+*.wav
+*.zip
+*.log

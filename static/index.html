@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stem Splitter Studio</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚️</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        :root {
+            --bg: #0b0d10; --panel: #11141a; --panel-2: #171b23; --border: #232833;
+            --text: #e7eaf0; --muted: #8b93a3; --accent: #6366f1;
+        }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
+        .panel { background: var(--panel); border: 1px solid var(--border); }
+        .panel-2 { background: var(--panel-2); border: 1px solid var(--border); }
+        .btn { transition: all .15s ease; }
+        .btn:active { transform: scale(.96); }
+        .quality-card { background: var(--panel-2); border: 1px solid var(--border); }
+        .quality-card.selected { border-color: var(--accent); background: rgba(99,102,241,.12); }
+        input[type=range] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #2a303c; outline: none; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #cdd3e0; cursor: pointer; }
+        .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-thumb { background: #2a303c; border-radius: 4px; }
+        .fade-in { animation: fade .4s ease; }
+        @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    </style>
+</head>
+
+<body class="min-h-screen flex items-center justify-center p-4">
+    <div class="w-full max-w-4xl">
+
+        <!-- ============ HEADER ============ -->
+        <header class="flex items-center gap-3 mb-6">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">🎚️</div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight">Stem Splitter Studio</h1>
+                <p class="text-xs" style="color:var(--muted)">Up to 11-stem separation · vocal ensemble · instrument extraction</p>
+            </div>
+        </header>
+
+        <!-- ============ UPLOAD VIEW ============ -->
+        <div id="uploadView" class="space-y-4 fade-in">
+
+            <div id="dropzone" class="panel rounded-2xl p-10 text-center cursor-pointer hover:border-indigo-500 transition"
+                style="border-style:dashed; border-width:2px;">
+                <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aac" class="hidden">
+                <div class="text-3xl mb-3">🎵</div>
+                <p class="text-sm font-medium">Drop a track, or <span class="text-indigo-400">browse</span></p>
+                <p class="text-xs mt-1" style="color:var(--muted)">wav · mp3 · flac · m4a — up to 300 MB</p>
+            </div>
+
+            <div class="grid grid-cols-3 gap-3">
+                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="fast">
+                    <input type="radio" name="quality" value="fast" class="hidden" checked>
+                    <span class="block text-sm font-bold">⚡ Fast</span>
+                    <span class="block text-xs mt-1" style="color:var(--muted)">6 stems · ~9 min</span>
+                </label>
+                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="precision">
+                    <input type="radio" name="quality" value="precision" class="hidden">
+                    <span class="block text-sm font-bold">🎯 Precision</span>
+                    <span class="block text-xs mt-1" style="color:var(--muted)">6 stems · ensemble · lossless</span>
+                </label>
+                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="extended">
+                    <input type="radio" name="quality" value="extended" class="hidden">
+                    <span class="block text-sm font-bold">🪄 Extended</span>
+                    <span class="block text-xs mt-1" style="color:var(--muted)">11 stems · +synth/strings/brass/organ/keys</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- ============ PROCESSING VIEW ============ -->
+        <div id="processingView" class="hidden panel rounded-2xl p-6 space-y-4 fade-in">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p id="procName" class="text-sm font-semibold truncate max-w-md"></p>
+                    <p id="procStage" class="text-xs mt-1" style="color:var(--accent)"></p>
+                </div>
+                <span id="procPercent" class="mono text-sm" style="color:var(--muted)">0%</span>
+            </div>
+            <div class="h-1.5 rounded-full overflow-hidden" style="background:#232833">
+                <div id="procBar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div>
+            </div>
+            <p class="text-xs" style="color:var(--muted)">Precision/Extended modes run 2-4× slower — grab a coffee ☕</p>
+            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg panel-2 btn">Cancel view</button>
+        </div>
+
+        <!-- ============ ERROR VIEW ============ -->
+        <div id="errorView" class="hidden panel rounded-2xl p-6 space-y-3 fade-in" style="border-color:#7f1d1d">
+            <p class="text-sm font-bold text-red-400">Split failed</p>
+            <p id="errorText" class="text-xs text-red-300/80 break-words"></p>
+            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg btn text-red-200" style="background:#7f1d1d">Try again</button>
+        </div>
+
+        <!-- ============ PLAYER VIEW ============ -->
+        <div id="playerView" class="hidden space-y-4 fade-in">
+
+            <!-- track list -->
+            <div class="panel rounded-2xl overflow-hidden">
+                <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--border)">
+                    <div class="flex items-center gap-2">
+                        <span id="playerName" class="text-sm font-semibold truncate max-w-xs"></span>
+                        <span id="playerBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style="background:rgba(99,102,241,.15); color:var(--accent)"></span>
+                    </div>
+                    <a id="downloadAllBtn" href="#" class="text-xs px-3 py-1.5 rounded-lg btn font-semibold text-emerald-300" style="background:rgba(16,185,129,.12)">⬇ Download all (ZIP)</a>
+                </div>
+                <div id="trackList"></div>
+            </div>
+
+            <!-- transport -->
+            <div class="panel rounded-2xl p-4">
+                <div class="flex items-center gap-4">
+                    <button id="playBtn" class="w-11 h-11 rounded-full btn flex items-center justify-center text-lg font-bold text-white"
+                        style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">▶</button>
+                    <div class="flex-1">
+                        <div id="seekBar" class="relative h-6 cursor-pointer">
+                            <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded" style="background:#2a303c"></div>
+                            <div id="seekFill" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded" style="width:0%; background:var(--accent)"></div>
+                            <div id="seekKnob" class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow" style="left:0%"></div>
+                        </div>
+                        <div class="flex justify-between mono text-xs mt-1" style="color:var(--muted)">
+                            <span id="timeNow">0:00</span>
+                            <span id="timeTotal">0:00</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 w-32">
+                        <span class="text-xs" style="color:var(--muted)">VOL</span>
+                        <input id="masterVol" type="range" min="0" max="100" value="90" class="flex-1">
+                    </div>
+                </div>
+            </div>
+
+            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg panel-2 btn">Split another track</button>
+        </div>
+    </div>
+
+    <script>
+        // ================= state =================
+        const STEM_COLORS = {
+            vocals: '#f43f5e', drums: '#f59e0b', bass: '#0ea5e9', guitar: '#22c55e',
+            piano: '#a855f7', other: '#94a3b8', synth: '#06b6d4', strings: '#ec4899',
+            brass: '#eab308', organ: '#8b5cf6', keys: '#14b8a6',
+        };
+        const stems = [];          // {key, name, url, color, peaks, buffer, gain, vol, muted, solo}
+        let audioCtx = null, masterGain = null;
+        let playing = false, playhead = 0, startedAt = 0, rafId = null;
+        let duration = 0, pollTimer = null, crawl = 0;
+
+        const $ = (id) => document.getElementById(id);
+
+        // ================= upload flow =================
+        document.querySelectorAll('.quality-card').forEach(card => {
+            card.addEventListener('click', () => {
+                document.querySelectorAll('.quality-card').forEach(c => c.classList.remove('selected'));
+                card.classList.add('selected');
+                card.querySelector('input').checked = true;
+            });
+        });
+        document.querySelector('.quality-card[data-q="fast"]').classList.add('selected');
+
+        const dropzone = $('dropzone'), fileInput = $('audioFile');
+        dropzone.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => { if (e.target.files.length) handleUpload(e.target.files[0]); };
+        dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = '#6366f1'; };
+        dropzone.ondragleave = () => dropzone.style.borderColor = '';
+        dropzone.ondrop = (e) => {
+            e.preventDefault(); dropzone.style.borderColor = '';
+            if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
+        };
+
+        function resetUI() {
+            clearTimeout(pollTimer); cancelAnimationFrame(rafId);
+            if (playing) stopPlayback();
+            ['processingView', 'errorView', 'playerView'].forEach(v => $(v).classList.add('hidden'));
+            $('uploadView').classList.remove('hidden');
+            stems.length = 0; duration = 0; playhead = 0; crawl = 0;
+            $('trackList').innerHTML = '';
+        }
+
+        function handleUpload(file) {
+            $('uploadView').classList.add('hidden');
+            $('processingView').classList.remove('hidden');
+            $('errorView').classList.add('hidden');
+            $('procName').textContent = file.name;
+            $('procStage').textContent = 'Uploading…';
+            crawl = 0;
+
+            const fd = new FormData();
+            fd.append('file', file);
+            fd.append('quality', document.querySelector('input[name="quality"]:checked').value);
+
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/api/upload', true);
+            xhr.upload.onprogress = (e) => {
+                if (e.lengthComputable) {
+                    const pct = Math.round((e.loaded / e.total) * 100);
+                    setProgress(pct * 0.4, `Uploading (${pct}%)`);
+                }
+            };
+            xhr.onload = () => {
+                try {
+                    const data = JSON.parse(xhr.responseText);
+                    if (data.job_id) { setProgress(40, 'Queued — waiting for GPU…'); pollStatus(data.job_id); }
+                    else showError(data.message || 'Backend rejected the upload.');
+                } catch { showError(`Server error ${xhr.status}`); }
+            };
+            xhr.onerror = () => showError('Network error — is the server running on :8000?');
+            xhr.send(fd);
+        }
+
+        function setProgress(pct, label) {
+            $('procBar').style.width = pct + '%';
+            $('procPercent').textContent = Math.round(pct) + '%';
+            if (label) $('procStage').textContent = label;
+        }
+
+        async function pollStatus(jobId) {
+            try {
+                const res = await fetch(`/api/status/${jobId}`);
+                const data = await res.json();
+                if (data.status === 'processing') {
+                    if (crawl < 93) crawl += 0.5 + Math.random() * 0.4;
+                    setProgress(crawl, data.stage || 'Processing on GPU…');
+                    pollTimer = setTimeout(() => pollStatus(jobId), 2500);
+                } else if (data.status === 'queued') {
+                    setProgress(42, 'Queued — waiting for the GPU worker…');
+                    pollTimer = setTimeout(() => pollStatus(jobId), 2000);
+                } else if (data.status === 'completed') {
+                    setProgress(100, 'Done');
+                    setTimeout(() => buildPlayer(data), 300);
+                } else if (data.status === 'error') {
+                    showError(data.error || 'Unknown backend error');
+                } else {
+                    pollTimer = setTimeout(() => pollStatus(jobId), 2000);
+                }
+            } catch { pollTimer = setTimeout(() => pollStatus(jobId), 4000); }
+        }
+
+        function showError(msg) {
+            clearTimeout(pollTimer);
+            $('processingView').classList.add('hidden');
+            $('errorView').classList.remove('hidden');
+            $('errorText').textContent = msg;
+        }
+
+        // ================= player =================
+        async function buildPlayer(data) {
+            $('processingView').classList.add('hidden');
+            $('playerView').classList.remove('hidden');
+            $('playerName').textContent = data.name || 'track';
+            $('playerBadge').textContent = (data.quality || 'fast') + (data.quality === 'extended' ? ' · 11 stems' : '');
+            $('downloadAllBtn').href = `/api/download/${data.stems[0].split('/')[3]}`;
+
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            masterGain = audioCtx.createGain();
+            masterGain.gain.value = 0.9;
+            masterGain.connect(audioCtx.destination);
+
+            const details = data.stem_details || [];
+            for (let i = 0; i < data.stems.length; i++) {
+                const url = data.stems[i];
+                const file = url.split('/').pop().replace('.wav', '');
+                const stem = {
+                    key: file, name: details[i]?.name || file, url, color: STEM_COLORS[file] || '#888',
+                    peaks: null, buffer: null, gain: audioCtx.createGain(), vol: 0.9, muted: false, solo: false,
+                };
+                stems.push(stem);
+                renderTrackRow(stem);
+                // decode async, draw waveform when ready
+                loadStemAudio(stem).then(() => drawWaveform(stem));
+            }
+        }
+
+        function renderTrackRow(stem) {
+            const row = document.createElement('div');
+            row.className = 'flex items-center gap-3 px-5 py-2.5 hover:bg-white/[.02] transition';
+            row.innerHTML = `
+                <div class="w-24 shrink-0 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${stem.color}"></span>
+                    <span class="text-xs font-semibold truncate">${stem.name}</span>
+                </div>
+                <canvas class="stem-wave flex-1 h-10 rounded cursor-pointer" data-stem="${stem.key}" style="background:#0d1016; width:100%"></canvas>
+                <div class="w-28 shrink-0 flex items-center gap-2">
+                    <input type="range" min="0" max="100" value="90" class="flex-1 stem-vol" data-stem="${stem.key}">
+                    <button class="w-6 h-6 rounded text-[10px] font-bold btn stem-mute" data-stem="${stem.key}" style="background:#232833; color:var(--muted)">M</button>
+                    <button class="w-6 h-6 rounded text-[10px] font-bold btn stem-solo" data-stem="${stem.key}" style="background:#232833; color:var(--muted)">S</button>
+                </div>`;
+            $('trackList').appendChild(row);
+
+            row.querySelector('.stem-vol').addEventListener('input', (e) => {
+                stem.vol = e.target.value / 100; applyGains();
+            });
+            row.querySelector('.stem-mute').addEventListener('click', (e) => {
+                stem.muted = !stem.muted; styleMSS(e.target, stem.muted); applyGains();
+            });
+            row.querySelector('.stem-solo').addEventListener('click', (e) => {
+                stem.solo = !stem.solo;
+                document.querySelectorAll('.stem-solo').forEach(b => {
+                    const s = stems.find(x => x.key === b.dataset.stem);
+                    styleMSS(b, s.solo, true);
+                });
+                applyGains();
+            });
+            // click waveform = seek
+            row.querySelector('.stem-wave').addEventListener('click', (e) => {
+                const rect = e.currentTarget.getBoundingClientRect();
+                seekTo(((e.clientX - rect.left) / rect.width) * duration);
+            });
+        }
+
+        function styleMSS(btn, on, isSolo = false) {
+            if (on) { btn.style.background = isSolo ? '#eab308' : '#ef4444'; btn.style.color = '#fff'; }
+            else { btn.style.background = '#232833'; btn.style.color = 'var(--muted)'; }
+        }
+
+        async function loadStemAudio(stem) {
+            const res = await fetch(stem.url);
+            const buf = await res.arrayBuffer();
+            stem.buffer = await audioCtx.decodeAudioData(buf);
+            if (stem.buffer.duration > duration) duration = stem.buffer.duration;
+            $('timeTotal').textContent = fmtTime(duration);
+            // compute peaks: 1500 buckets of min/max
+            const ch = stem.buffer.getChannelData(0);
+            const ch2 = stem.buffer.numberOfChannels > 1 ? stem.buffer.getChannelData(1) : ch;
+            const buckets = 1500, size = Math.floor(ch.length / buckets) || 1;
+            const peaks = new Float32Array(buckets * 2);
+            for (let i = 0; i < buckets; i++) {
+                let mn = 1, mx = -1;
+                const start = i * size, end = Math.min(start + size, ch.length);
+                for (let j = start; j < end; j++) {
+                    const v = Math.abs(ch[j] + ch2[j]) / 2;
+                    if (v < mn) mn = v; if (v > mx) mx = v;
+                }
+                peaks[i * 2] = mn; peaks[i * 2 + 1] = mx;
+            }
+            stem.peaks = peaks;
+        }
+
+        function drawWaveform(stem, progress = -1) {
+            const canvas = document.querySelector(`canvas.stem-wave[data-stem="${stem.key}"]`);
+            if (!canvas || !stem.peaks) return;
+            const dpr = window.devicePixelRatio || 1;
+            const w = canvas.clientWidth, h = canvas.clientHeight;
+            canvas.width = w * dpr; canvas.height = h * dpr;
+            const ctx2 = canvas.getContext('2d');
+            ctx2.scale(dpr, dpr);
+            ctx2.clearRect(0, 0, w, h);
+
+            const n = stem.peaks.length / 2, mid = h / 2;
+            const progressX = progress >= 0 ? progress * w : w;
+            for (let x = 0; x < w; x++) {
+                const i = Math.floor((x / w) * n);
+                const amp = (stem.peaks[i * 2] + stem.peaks[i * 2 + 1]) / 2;
+                const bh = Math.max(1, amp * (h * 0.92));
+                ctx2.fillStyle = x < progressX ? stem.color : stem.color + '33';
+                ctx2.fillRect(x, mid - bh / 2, 1, bh);
+            }
+        }
+
+        function redrawAllWaveforms(progress) {
+            stems.forEach(s => drawWaveform(s, progress));
+        }
+
+        // ================= playback engine =================
+        function applyGains() {
+            const anySolo = stems.some(s => s.solo);
+            stems.forEach(s => {
+                const audible = anySolo ? s.solo : !s.muted;
+                const target = audible ? s.vol : 0;
+                s.gain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.01);
+            });
+        }
+
+        function startPlayback() {
+            if (!stems.length || !stems[0].buffer) return;
+            audioCtx.resume();
+            playing = true;
+            startedAt = audioCtx.currentTime - playhead;
+            stems.forEach(s => {
+                if (s.buffer) {
+                    const src = audioCtx.createBufferSource();
+                    src.buffer = s.buffer;
+                    src.connect(s.gain);
+                    s.gain.connect(masterGain);
+                    src.start(0, playhead);
+                    s.source = src;
+                }
+            });
+            $('playBtn').textContent = '⏸';
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function stopPlayback() {
+            playing = false;
+            stems.forEach(s => { if (s.source) { try { s.source.stop(); } catch {} s.source.disconnect(); s.source = null; } });
+            $('playBtn').textContent = '▶';
+            cancelAnimationFrame(rafId);
+        }
+
+        function seekTo(t) {
+            const wasPlaying = playing;
+            if (playing) stopPlayback();
+            playhead = Math.max(0, Math.min(t, duration));
+            if (wasPlaying) startPlayback(); else { redrawAllWaveforms(playhead / duration); updateTransport(); }
+        }
+
+        function tick() {
+            if (!playing) return;
+            playhead = audioCtx.currentTime - startedAt;
+            if (playhead >= duration) { stopPlayback(); playhead = 0; redrawAllWaveforms(0); updateTransport(); return; }
+            redrawAllWaveforms(playhead / duration);
+            updateTransport();
+            rafId = requestAnimationFrame(tick);
+        }
+
+        function updateTransport() {
+            const pct = duration ? (playhead / duration) * 100 : 0;
+            $('seekFill').style.width = pct + '%';
+            $('seekKnob').style.left = pct + '%';
+            $('timeNow').textContent = fmtTime(playhead);
+        }
+
+        function fmtTime(s) {
+            const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+            return m + ':' + String(sec).padStart(2, '0');
+        }
+
+        $('playBtn').onclick = () => playing ? stopPlayback() : startPlayback();
+        $('masterVol').oninput = (e) => { if (masterGain) masterGain.gain.value = e.target.value / 100; };
+        $('seekBar').addEventListener('click', (e) => {
+            const rect = e.currentTarget.getBoundingClientRect();
+            seekTo(((e.clientX - rect.left) / rect.width) * duration);
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && !$('playerView').classList.contains('hidden')) {
+                e.preventDefault(); playing ? stopPlayback() : startPlayback();
+            }
+        });
+
+        // ================= reopen a completed job via ?job=<id> =================
+        (async () => {
+            const jobId = new URLSearchParams(location.search).get('job');
+            if (!jobId) return;
+            try {
+                const res = await fetch(`/api/status/${jobId}`);
+                const data = await res.json();
+                if (data.status === 'completed') {
+                    $('uploadView').classList.add('hidden');
+                    buildPlayer(data);
+                } else if (data.status === 'processing' || data.status === 'queued') {
+                    $('uploadView').classList.add('hidden');
+                    $('processingView').classList.remove('hidden');
+                    $('procName').textContent = data.name || jobId;
+                    pollStatus(jobId);
+                }
+            } catch (e) { /* fall through to normal upload view */ }
+        })();
+    </script>
+</body>
+
+</html>
