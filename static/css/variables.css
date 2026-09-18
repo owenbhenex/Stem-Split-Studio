@@ -1,0 +1,85 @@
+/* ==========================================================================
+   Design Tokens & Stem Color Palette — Stem Splitter Studio
+   Theme: Cyber-Analog Studio Console
+   ========================================================================== */
+
+:root {
+  /* Surface Backdrops */
+  --surface-void: #07090e;
+  --surface-base: #0c0f17;
+  --surface-panel: #131824;
+  --surface-panel-alt: #171d2b;
+  --surface-raised: #1c2333;
+  --surface-hover: #222b3e;
+  --surface-active: #2a364e;
+
+  /* Borders & Dividers */
+  --border-subtle: #1c2433;
+  --border-medium: #2a3449;
+  --border-strong: #3d4c6a;
+  --border-focus: #6366f1;
+
+  /* Typography */
+  --text-bright: #ffffff;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+
+  /* Brand / Accent */
+  --brand-primary: #6366f1;
+  --brand-secondary: #8b5cf6;
+  --brand-tertiary: #ec4899;
+  --brand-gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+  --brand-glow: rgba(99, 102, 241, 0.4);
+
+  /* Status Tokens */
+  --status-success: #10b981;
+  --status-success-glow: rgba(16, 185, 129, 0.35);
+  --status-warning: #f59e0b;
+  --status-warning-glow: rgba(245, 158, 11, 0.35);
+  --status-danger: #ef4444;
+  --status-danger-glow: rgba(239, 68, 68, 0.35);
+  --status-info: #0ea5e9;
+
+  /* Chromatic Stem Hues (11 Stems) */
+  --stem-vocals: #f43f5e;
+  --stem-vocals-glow: rgba(244, 63, 94, 0.35);
+  --stem-bass: #06b6d4;
+  --stem-bass-glow: rgba(6, 182, 212, 0.35);
+  --stem-drums: #f59e0b;
+  --stem-drums-glow: rgba(245, 158, 11, 0.35);
+  --stem-guitar: #10b981;
+  --stem-guitar-glow: rgba(16, 185, 129, 0.35);
+  --stem-piano: #a855f7;
+  --stem-piano-glow: rgba(168, 85, 247, 0.35);
+  --stem-synth: #00f5d4;
+  --stem-synth-glow: rgba(0, 245, 212, 0.35);
+  --stem-strings: #ec4899;
+  --stem-strings-glow: rgba(236, 72, 153, 0.35);
+  --stem-brass: #eab308;
+  --stem-brass-glow: rgba(234, 179, 8, 0.35);
+  --stem-organ: #7c3aed;
+  --stem-organ-glow: rgba(124, 58, 237, 0.35);
+  --stem-keys: #14b8a6;
+  --stem-keys-glow: rgba(20, 184, 166, 0.35);
+  --stem-other: #94a3b8;
+  --stem-other-glow: rgba(148, 163, 184, 0.35);
+
+  /* Shadows & Elevation */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 12px 28px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 20px var(--brand-glow);
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+  --radius-full: 9999px;
+
+  /* Transitions */
+  --trans-fast: 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  --trans-normal: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  --trans-smooth: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}

@@ -24,6 +24,7 @@ import logging
 import threading
 import zipfile
 import traceback
+import subprocess
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -434,14 +435,75 @@ def _load_job(job_id: str):
         job = JOBS.get(job_id)
     if job:
         return job
-    state_file = OUTPUT_DIR / job_id / "state.json"
+    job_dir = OUTPUT_DIR / job_id
+    state_file = job_dir / "state.json"
     if state_file.exists():
         try:
-            import json
             return json.loads(state_file.read_text(encoding="utf-8"))
         except Exception:
-            return None
+            pass
+    # Fallback: reconstruct from existing wav files if directory exists
+    if job_dir.is_dir():
+        wav_files = sorted(job_dir.glob("*.wav"))
+        if wav_files:
+            stems = []
+            for wf in wav_files:
+                stem_key = wf.stem.lower()
+                label = STEM_LABELS.get(stem_key, wf.stem.capitalize())
+                stems.append({"name": label, "file": wf.name, "size": wf.stat().st_size})
+            quality = "extended" if len(stems) > 6 else "fast"
+            return {
+                "id": job_id,
+                "display": job_id,
+                "quality": quality,
+                "state": "completed",
+                "stage": "Done",
+                "error": None,
+                "stems": stems,
+            }
     return None
+
+
+@app.get("/api/jobs")
+async def list_jobs():
+    """Return a list of completed sessions stored on disk."""
+    results = []
+    if not OUTPUT_DIR.exists():
+        return {"jobs": []}
+    for item in OUTPUT_DIR.iterdir():
+        if item.is_dir():
+            job = _load_job(item.name)
+            if job and job.get("state") == "completed":
+                results.append({
+                    "id": job["id"],
+                    "name": job.get("display", item.name),
+                    "quality": job.get("quality", "fast"),
+                    "stem_count": len(job.get("stems", [])),
+                    "timestamp": int(item.stat().st_mtime * 1000),
+                })
+    results.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"jobs": results}
+
+
+@app.get("/api/jobs")
+async def list_jobs():
+    """Return a list of completed sessions stored on disk."""
+    results = []
+    if not OUTPUT_DIR.exists():
+        return {"jobs": []}
+    for item in OUTPUT_DIR.iterdir():
+        if item.is_dir():
+            job = _load_job(item.name)
+            if job and job.get("state") == "completed":
+                results.append({
+                    "id": job["id"],
+                    "name": job.get("display", item.name),
+                    "quality": job.get("quality", "fast"),
+                    "stem_count": len(job.get("stems", [])),
+                    "timestamp": int(item.stat().st_mtime * 1000),
+                })
+    results.sort(key=lambda x: x["timestamp"], reverse=True)
+    return {"jobs": results}
 
 
 @app.get("/api/status/{job_id}")
@@ -491,6 +553,123 @@ async def download_all(job_id: str):
         filename=f"{prefix} stems.zip",
         media_type="application/zip",
     )
+
+
+# --------------------------------------------------------------------------------------
+# System features: mix render, analysis, health
+# --------------------------------------------------------------------------------------
+@app.post("/api/mix/{job_id}")
+async def render_mix(job_id: str, body: dict = None):
+    """
+    Render a custom mix server-side with ffmpeg from the client's per-stem
+    volumes/mutes. Body: { "stems": {"vocals": 0.9, "drums": 0.0, ...},
+                          "format": "wav" | "mp3", "master": 1.0 }
+    """
+    body = body or {}
+    stem_gains = body.get("stems") or {}
+    fmt = body.get("format", "wav")
+    master = float(body.get("master", 1.0))
+    if fmt not in ("wav", "mp3"):
+        return JSONResponse(status_code=400, content={"message": "format must be wav or mp3"})
+    if not isinstance(stem_gains, dict) or not stem_gains:
+        return JSONResponse(status_code=400, content={"message": "stems map required"})
+
+    job = _load_job(job_id)
+    if job is None or job["state"] != "completed":
+        return JSONResponse(status_code=404, content={"message": "Job not found or not completed"})
+    job_dir = OUTPUT_DIR / job_id
+    if any(not re.fullmatch(r"[a-z0-9_]+", k) for k in stem_gains):
+        return JSONResponse(status_code=400, content={"message": "invalid stem key"})
+
+    # Build an ffmpeg filtergraph: per-stem volume, then sum
+    inputs, filters = [], []
+    idx = 0
+    for stem_key, gain in stem_gains.items():
+        p = job_dir / f"{stem_key}.wav"
+        if not p.exists():
+            continue
+        g = max(0.0, min(1.0, float(gain))) * master
+        if g <= 0:
+            continue  # muted — skip file entirely
+        inputs += ["-i", str(p)]
+        filters.append(f"[{idx}:a]volume={g:.4f}[s{idx}]")
+        idx += 1
+    if not inputs:
+        return JSONResponse(status_code=400, content={"message": "all stems are muted"})
+
+    mix_inputs = "".join(f"[s{i}]" for i in range(idx))
+    filter_complex = ";".join(filters) + f";{mix_inputs}amix=inputs={idx}:normalize=0[out]"
+
+    prefix = re.sub(r"[^A-Za-z0-9_\\-]+", "_", job.get("display", "mix")).strip("_") or "mix"
+    out = job_dir / f"mix.{fmt}"
+    cmd = ["ffmpeg", "-y", *inputs, "-filter_complex", filter_complex,
+           "-map", "[out]", "-ac", "2", "-ar", "44100"]
+    if fmt == "mp3":
+        cmd += ["-b:a", "320k"]
+    else:
+        cmd += ["-c:a", "pcm_s16le"]
+    cmd.append(str(out))
+
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+    if proc.returncode != 0 or not out.exists():
+        return JSONResponse(status_code=500, content={"message": f"ffmpeg failed: {proc.stderr[-400:]}"})
+
+    return FileResponse(path=out, filename=f"{prefix} mix.{fmt}", media_type="audio/mpeg" if fmt == "mp3" else "audio/wav")
+
+
+@app.get("/api/analysis/{job_id}")
+async def analyze_job(job_id: str):
+    """Duration, sample rate, channels, and BPM estimate (from the vocals stem)."""
+    job = _load_job(job_id)
+    if job is None or job["state"] != "completed":
+        return JSONResponse(status_code=404, content={"message": "Job not found or not completed"})
+    job_dir = OUTPUT_DIR / job_id
+
+    # cached analysis lives next to the stems
+    cache = job_dir / "analysis.json"
+    if cache.exists():
+        try:
+            return json.loads(cache.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    info = sf.info(str(job_dir / "vocals.wav"))
+    duration = float(info.duration)
+    bpm = None
+    try:
+        ref = job_dir / "vocals.wav" if (job_dir / "vocals.wav").exists() else job_dir / "other.wav"
+        y, sr = librosa.load(str(ref), mono=True, sr=22050)
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+        bpm = round(float(np.atleast_1d(tempo)[0]), 1)
+    except Exception:
+        pass
+
+    result = {
+        "id": job_id, "name": job.get("display", ""),
+        "duration": round(duration, 2), "sample_rate": info.samplerate,
+        "channels": info.channels, "bpm": bpm,
+        "stems": len(job.get("stems", [])), "quality": job.get("quality", "fast"),
+    }
+    cache.write_text(json.dumps(result), encoding="utf-8")
+    return result
+
+
+@app.get("/api/health")
+async def health():
+    gpu = torch.cuda.is_available()
+    gpu_name = torch.cuda.get_device_name(0) if gpu else None
+    vram_total = torch.cuda.get_device_properties(0).total_memory if gpu else 0
+    import audio_separator
+    with JOBS_LOCK:
+        n_jobs = len(JOBS)
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "gpu": {"available": gpu, "name": gpu_name, "vram_mb": round(vram_total / 2**20) if gpu else 0},
+        "queue_depth": JOB_QUEUE.qsize(),
+        "jobs_in_memory": n_jobs,
+        "audio_separator": getattr(audio_separator, "__version__", "unknown"),
+    }
 
 
 if os.path.exists(APP_DIR / "static"):

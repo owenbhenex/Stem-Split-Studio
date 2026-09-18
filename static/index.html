@@ -6,208 +6,748 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Stem Splitter Studio</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎚️</text></svg>">
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <style>
+        /* ============================================================
+           Stem Splitter Studio — "Studio Brochure" design system v2
+           Warm-light, paper-like, ElevenLabs-derived but distinct:
+           terracotta accent, thin display type, whisper shadows.
+           (See docs/DESIGN.md for the full token spec.)
+        ============================================================ */
         :root {
-            --bg: #0b0d10; --panel: #11141a; --panel-2: #171b23; --border: #232833;
-            --text: #e7eaf0; --muted: #8b93a3; --accent: #6366f1;
+            /* surfaces — warm paper */
+            --bg: #faf9f7;
+            --surface: #ffffff;
+            --surface-warm: #f5f2ef;
+            --surface-sunk: #f0eeea;
+            /* text */
+            --text: #191714;
+            --text-2: #4e4e4e;
+            --text-3: #777169;
+            --text-4: #a8a29a;
+            /* accent — terracotta (unique vs. every dark stem tool) */
+            --accent: #c96442;
+            --accent-hover: #b5573a;
+            --accent-soft: rgba(201, 100, 66, 0.09);
+            /* stems */
+            --vocals: #e05252; --drums: #d99a2b; --bass: #3e8fb8; --guitar: #4caf7d;
+            --piano: #9d6fd1; --synth: #2ba8a8; --strings: #d4699f; --brass: #c9a13b;
+            --organ: #7e6cc9; --keys: #3aa394; --other: #8a8f98;
+            /* borders & shadows — sub-0.1 whisper stack */
+            --border: #e8e4de;
+            --border-subtle: rgba(25, 23, 20, 0.06);
+            --shadow-1: rgba(25, 23, 20, 0.04) 0 1px 2px, rgba(25, 23, 20, 0.03) 0 2px 4px;
+            --shadow-2: rgba(25, 23, 20, 0.05) 0 2px 8px, rgba(25, 23, 20, 0.03) 0 8px 24px;
+            --shadow-warm: rgba(120, 70, 40, 0.06) 0 6px 16px;
+            --inset-edge: rgba(25, 23, 20, 0.05) 0 0 0 0.5px inset;
+            /* type */
+            --font: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+            --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+            --radius: 10px; --radius-lg: 16px; --radius-xl: 20px;
         }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; }
-        .panel { background: var(--panel); border: 1px solid var(--border); }
-        .panel-2 { background: var(--panel-2); border: 1px solid var(--border); }
-        .btn { transition: all .15s ease; }
-        .btn:active { transform: scale(.96); }
-        .quality-card { background: var(--panel-2); border: 1px solid var(--border); }
-        .quality-card.selected { border-color: var(--accent); background: rgba(99,102,241,.12); }
-        input[type=range] { -webkit-appearance: none; height: 4px; border-radius: 2px; background: #2a303c; outline: none; }
-        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: #cdd3e0; cursor: pointer; }
-        .mono { font-family: 'JetBrains Mono', ui-monospace, monospace; }
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-thumb { background: #2a303c; border-radius: 4px; }
-        .fade-in { animation: fade .4s ease; }
-        @keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            background: var(--bg); color: var(--text);
+            font-family: var(--font); font-size: 15px; line-height: 1.55;
+            letter-spacing: 0.01em; -webkit-font-smoothing: antialiased; overflow: hidden;
+        }
+        button, input, select { font: inherit; color: inherit; }
+        button { cursor: pointer; background: none; border: none; }
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-thumb { background: #ddd8d0; border-radius: 5px; border: 2px solid var(--bg); }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .mono { font-family: var(--mono); }
+
+        /* ============ Shell ============ */
+        #shell { display: flex; height: 100vh; }
+
+        /* --- Sidebar --- */
+        #sidebar {
+            width: 232px; background: var(--surface-warm); flex-shrink: 0;
+            border-right: 1px solid var(--border-subtle);
+            display: flex; flex-direction: column; padding: 20px 14px;
+        }
+        .brand { display: flex; align-items: center; gap: 10px; padding: 2px 8px 18px; }
+        .brand-mark {
+            width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
+            background: var(--accent); color: #fff; font-size: 15px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: var(--shadow-warm);
+        }
+        .brand-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+        .brand-sub { font-size: 10px; color: var(--text-3); font-weight: 500; letter-spacing: 0.08em; }
+
+        .nav-section { margin-top: 10px; }
+        .nav-label {
+            font-size: 10px; font-weight: 600; color: var(--text-4);
+            padding: 0 10px; margin-bottom: 5px; letter-spacing: 0.09em; text-transform: uppercase;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 9px; width: 100%;
+            padding: 7px 10px; border-radius: 8px; cursor: pointer;
+            font-size: 13.5px; font-weight: 500; color: var(--text-2);
+            transition: all .15s ease; text-align: left;
+        }
+        .nav-item:hover { background: rgba(255, 255, 255, 0.7); color: var(--text); }
+        .nav-item.active { background: var(--surface); color: var(--text); box-shadow: var(--shadow-1); }
+        .nav-item .nav-ico { width: 17px; text-align: center; opacity: .75; font-size: 13px; }
+        .nav-count {
+            margin-left: auto; font-size: 10px; font-weight: 600; color: var(--text-3);
+            background: var(--surface); border-radius: 9999px; padding: 1px 7px;
+            box-shadow: var(--inset-edge);
+        }
+
+        .sidebar-foot {
+            margin-top: auto; padding: 12px 10px 2px; border-top: 1px solid var(--border-subtle);
+            font-size: 11px; color: var(--text-3); line-height: 1.6;
+        }
+        .sys-row { display: flex; justify-content: space-between; align-items: center; }
+        .gpu-dot { width: 6px; height: 6px; border-radius: 50%; background: #4caf7d; display: inline-block; margin-right: 5px; }
+        .gpu-dot.busy { background: var(--accent); animation: pulse 1.2s infinite; }
+        .gpu-dot.err { background: #e05252; }
+        @keyframes pulse { 50% { opacity: .4; } }
+
+        /* --- Main --- */
+        #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+        #topbar {
+            height: 54px; background: rgba(250, 249, 247, 0.85); backdrop-filter: blur(12px);
+            flex-shrink: 0; border-bottom: 1px solid var(--border-subtle);
+            display: flex; align-items: center; gap: 12px; padding: 0 24px;
+            position: relative; z-index: 5;
+        }
+        .topbar-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+        .topbar-sub { font-size: 12px; color: var(--text-3); }
+        .topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+        #content { flex: 1; overflow-y: auto; position: relative; }
+
+        .view { display: none; height: 100%; }
+        .view.active { display: block; animation: viewIn .3s ease; }
+        @keyframes viewIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+        .container { max-width: 980px; margin: 0 auto; padding: 44px 36px 120px; }
+
+        /* ============ Buttons & pills ============ */
+        .btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 9999px; padding: 8px 18px; cursor: pointer;
+            font-size: 13.5px; font-weight: 500; color: var(--text);
+            box-shadow: var(--shadow-1); transition: all .15s ease;
+        }
+        .btn:hover { box-shadow: var(--shadow-2); transform: translateY(-1px); }
+        .btn:active { transform: translateY(0) scale(.98); }
+        .btn.warm { background: var(--surface-warm); border-color: transparent; box-shadow: var(--shadow-warm); }
+        .btn.primary { background: var(--accent); border-color: transparent; color: #fff; box-shadow: var(--shadow-warm); }
+        .btn.primary:hover { background: var(--accent-hover); }
+        .btn.sm { padding: 5px 13px; font-size: 12.5px; }
+        .btn:disabled { opacity: .45; pointer-events: none; }
+
+        .chip {
+            display: inline-flex; align-items: center; gap: 6px;
+            font-size: 11.5px; font-weight: 500; color: var(--text-2);
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 9999px; padding: 3px 11px; box-shadow: var(--inset-edge);
+        }
+        .chip .dot { width: 5px; height: 5px; border-radius: 50%; }
+
+        /* ============ Cards ============ */
+        .card {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius-lg); box-shadow: var(--shadow-1);
+            transition: box-shadow .2s ease;
+        }
+        .card.hoverable:hover { box-shadow: var(--shadow-2); }
+
+        /* ============ Upload view ============ */
+        .hero-eyebrow {
+            font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase;
+            color: var(--accent); margin-bottom: 12px;
+        }
+        .hero-title {
+            font-size: 44px; font-weight: 300; letter-spacing: -0.03em; line-height: 1.08;
+            color: var(--text); max-width: 620px;
+        }
+        .hero-title em { font-style: normal; color: var(--accent); }
+        .hero-sub { font-size: 16px; color: var(--text-2); margin-top: 14px; max-width: 520px; letter-spacing: 0.01em; }
+
+        #dropzone {
+            margin-top: 32px; padding: 52px 24px; text-align: center;
+            border: 1.5px dashed #d5cfc6; border-radius: var(--radius-xl);
+            cursor: pointer; transition: all .2s ease; background: var(--surface);
+        }
+        #dropzone:hover, #dropzone.drag {
+            border-color: var(--accent); background: var(--accent-soft);
+            box-shadow: var(--shadow-warm);
+        }
+        .dz-ico { font-size: 30px; margin-bottom: 12px; }
+        .dz-main { font-size: 15.5px; font-weight: 500; }
+        .dz-main .link { color: var(--accent); font-weight: 600; }
+        .dz-sub { font-size: 12.5px; color: var(--text-3); margin-top: 5px; }
+
+        .quality-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 18px; }
+        .quality-card { padding: 18px 20px; cursor: pointer; position: relative; }
+        .quality-card:hover { box-shadow: var(--shadow-2); }
+        .quality-card.selected {
+            border-color: var(--accent); background: var(--accent-soft);
+            box-shadow: var(--shadow-warm);
+        }
+        .qc-title { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+        .qc-sub { font-size: 12.5px; color: var(--text-3); margin-top: 4px; line-height: 1.5; }
+        .qc-badge {
+            position: absolute; top: 14px; right: 16px; font-size: 10px; font-weight: 600;
+            color: var(--text-4); letter-spacing: 0.06em;
+        }
+        .qc-badge.rec { color: var(--accent); }
+
+        /* ============ Processing ============ */
+        .proc-card { max-width: 600px; margin: 0 auto; padding: 32px; }
+        .proc-name { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+        .proc-stage { font-size: 13px; color: var(--accent); font-weight: 500; margin-top: 3px; min-height: 1.6em; }
+        .proc-meta { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 16px; }
+        .proc-percent { font-family: var(--mono); font-size: 13px; color: var(--text-3); white-space: nowrap; }
+        .bar { height: 6px; border-radius: 3px; background: var(--surface-sunk); overflow: hidden; }
+        .bar-fill {
+            height: 100%; border-radius: 3px; width: 0%;
+            background: linear-gradient(90deg, var(--accent), #da8a5f);
+            transition: width .5s ease;
+        }
+        .proc-hint { font-size: 12.5px; color: var(--text-3); margin-top: 16px; line-height: 1.6; }
+        .stage-steps { margin-top: 20px; display: flex; gap: 8px; flex-wrap: wrap; }
+        .stage-chip {
+            font-size: 10.5px; font-weight: 500; color: var(--text-4);
+            border: 1px solid var(--border-subtle); border-radius: 9999px; padding: 3px 10px;
+            transition: all .3s ease;
+        }
+        .stage-chip.active { color: var(--accent); border-color: rgba(201, 100, 66, 0.35); background: var(--accent-soft); }
+        .stage-chip.done { color: #3d8b63; border-color: rgba(76, 175, 125, 0.3); }
+
+        /* ============ Error ============ */
+        .err-card { max-width: 600px; margin: 0 auto; padding: 32px; border-color: rgba(224, 82, 82, 0.35); }
+        .err-title { font-size: 16px; font-weight: 600; color: #b94444; }
+        .err-msg { font-size: 13px; color: var(--text-2); margin-top: 10px; word-break: break-word; line-height: 1.6; }
+
+        /* ============ Library ============ */
+        .lib-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+        .lib-title { font-size: 34px; font-weight: 300; letter-spacing: -0.02em; }
+        .lib-count { font-size: 13px; color: var(--text-3); margin-top: 2px; }
+        .job-list { border-radius: var(--radius-lg); overflow: hidden; }
+        .job-row {
+            display: flex; align-items: center; gap: 15px; padding: 14px 20px;
+            border-bottom: 1px solid var(--border-subtle); cursor: pointer;
+            transition: background .15s ease; background: var(--surface);
+        }
+        .job-row:hover { background: var(--surface-warm); }
+        .job-row:last-child { border-bottom: none; }
+        .job-art {
+            width: 42px; height: 42px; border-radius: 10px; flex-shrink: 0;
+            background: var(--surface-sunk); display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: var(--text-3);
+        }
+        .job-info { flex: 1; min-width: 0; }
+        .job-name { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .job-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .job-meta .mono { font-size: 11px; }
+
+        .empty-state { text-align: center; padding: 72px 24px; }
+        .empty-ico { font-size: 34px; margin-bottom: 14px; opacity: .45; }
+        .empty-title { font-size: 17px; font-weight: 500; color: var(--text-2); }
+        .empty-sub { font-size: 13.5px; color: var(--text-3); margin: 8px 0 22px; }
+
+        /* ============ Player ============ */
+        .player-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 14px; flex-wrap: wrap; }
+        .player-name { font-size: 26px; font-weight: 300; letter-spacing: -0.02em; max-width: 480px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .player-tags { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .analysis-strip {
+            display: flex; gap: 22px; padding: 12px 20px; margin-bottom: 16px; flex-wrap: wrap;
+            background: var(--surface-warm); border-radius: 12px; font-size: 12.5px; color: var(--text-2);
+        }
+        .analysis-strip b { font-weight: 600; color: var(--text); font-family: var(--mono); font-size: 12px; }
+        .analysis-strip .lbl { color: var(--text-3); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; display: block; margin-bottom: 1px; }
+
+        .tracks-card { overflow: hidden; }
+        .track-row {
+            display: flex; align-items: center; gap: 13px; padding: 10px 20px;
+            border-bottom: 1px solid var(--border-subtle);
+            transition: background .15s ease; height: 58px; background: var(--surface);
+        }
+        .track-row:hover { background: #fdfcfb; }
+        .track-row:last-child { border-bottom: none; }
+        .track-id { width: 116px; flex-shrink: 0; display: flex; align-items: center; gap: 9px; min-width: 0; }
+        .track-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 3px rgba(0,0,0,0.03); }
+        .track-name { font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .track-wave-wrap { flex: 1; min-width: 0; }
+        canvas.track-wave { width: 100%; height: 38px; display: none; cursor: pointer; border-radius: 5px; }
+        .wave-loading { height: 38px; border-radius: 5px; background: var(--surface-sunk); position: relative; overflow: hidden; }
+        .wave-loading-bar {
+            position: absolute; top: 0; bottom: 0; width: 36%;
+            background: linear-gradient(90deg, transparent, rgba(25, 23, 20, 0.05), transparent);
+            animation: shimmer 1.3s infinite;
+        }
+        @keyframes shimmer { from { left: -36%; } to { left: 100%; } }
+        .track-ctl { width: 148px; flex-shrink: 0; display: flex; align-items: center; gap: 7px; justify-content: flex-end; }
+        .vol-slider {
+            -webkit-appearance: none; appearance: none; width: 70px; height: 3px;
+            border-radius: 2px; background: #ddd8d0; outline: none; cursor: pointer;
+        }
+        .vol-slider::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 11px; height: 11px; border-radius: 50%;
+            background: var(--surface); border: 1.5px solid #b8b2a8; cursor: pointer;
+            box-shadow: var(--shadow-1);
+        }
+        .vol-slider::-moz-range-thumb {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: var(--surface); border: 1.5px solid #b8b2a8; cursor: pointer;
+        }
+        .ms-btn {
+            width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0;
+            background: var(--surface); border: 1px solid var(--border);
+            font-size: 10px; font-weight: 600; color: var(--text-3); cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+            transition: all .15s ease;
+        }
+        .ms-btn:hover { color: var(--text); box-shadow: var(--shadow-1); }
+        .ms-btn.muted { background: #e05252; color: #fff; border-color: transparent; }
+        .ms-btn.solo { background: #d99a2b; color: #fff; border-color: transparent; }
+
+        /* --- Transport --- */
+        #transport {
+            position: sticky; bottom: 0; z-index: 10;
+            background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(14px);
+            border-top: 1px solid var(--border-subtle);
+            padding: 13px 24px; display: none; box-shadow: 0 -8px 24px rgba(25, 23, 20, 0.04);
+        }
+        #transport.on { display: block; }
+        .tp-row { display: flex; align-items: center; gap: 18px; max-width: 980px; margin: 0 auto; }
+        .play-btn {
+            width: 44px; height: 44px; border-radius: 50%; cursor: pointer;
+            background: var(--accent); color: #fff; font-size: 16px;
+            display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+            box-shadow: var(--shadow-warm); transition: all .15s ease;
+        }
+        .play-btn:hover { transform: scale(1.06); background: var(--accent-hover); }
+        .play-btn:active { transform: scale(.97); }
+        .seek-wrap { flex: 1; cursor: pointer; }
+        .seek-track { position: relative; height: 24px; display: flex; align-items: center; }
+        .seek-rail { position: absolute; inset: 0 0 auto 0; height: 4px; top: 50%; transform: translateY(-50%); background: var(--surface-sunk); border-radius: 2px; }
+        .seek-fill { position: absolute; height: 4px; top: 50%; transform: translateY(-50%); left: 0; width: 0%; background: var(--accent); border-radius: 2px; }
+        .seek-knob { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; transform: translate(-50%, -50%); left: 0%; box-shadow: var(--shadow-2); }
+        .time-row { display: flex; justify-content: space-between; margin-top: 6px; }
+        .time { font-family: var(--mono); font-size: 11.5px; color: var(--text-3); }
+        .master-wrap { display: flex; align-items: center; gap: 9px; width: 150px; flex-shrink: 0; }
+        .master-wrap .label { font-size: 9.5px; font-weight: 600; color: var(--text-4); letter-spacing: 0.08em; }
+        .master-wrap .vol-slider { width: 84px; }
+
+        /* ============ Toasts ============ */
+        #toasts { position: fixed; bottom: 22px; right: 22px; z-index: 100; display: flex; flex-direction: column; gap: 9px; }
+        .toast {
+            display: flex; align-items: center; gap: 10px;
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 11px 16px; font-size: 13px; font-weight: 500;
+            box-shadow: var(--shadow-2); animation: toastIn .25s ease; max-width: 340px;
+        }
+        .toast.out { animation: toastOut .25s ease forwards; }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+        @keyframes toastOut { to { opacity: 0; transform: translateY(6px) scale(.97); } }
+
+        /* ============ Command palette (⌘K) ============ */
+        #palette { position: fixed; inset: 0; z-index: 200; display: none; background: var(--overlay, rgba(25, 23, 20, 0.4)); backdrop-filter: blur(2px); }
+        #palette.open { display: flex; align-items: flex-start; justify-content: center; padding-top: 14vh; }
+        .palette-card {
+            width: min(520px, 92vw); background: var(--surface);
+            border-radius: 16px; box-shadow: 0 24px 64px rgba(25, 23, 20, 0.18);
+            overflow: hidden; animation: viewIn .18s ease;
+        }
+        .palette-input {
+            width: 100%; padding: 15px 18px; border: none; outline: none;
+            font-size: 15px; background: transparent; border-bottom: 1px solid var(--border-subtle);
+        }
+        .palette-list { max-height: 320px; overflow-y: auto; padding: 7px; }
+        .palette-item {
+            display: flex; align-items: center; gap: 10px; width: 100%;
+            padding: 9px 12px; border-radius: 9px; cursor: pointer;
+            font-size: 13.5px; font-weight: 500; color: var(--text-2); text-align: left;
+        }
+        .palette-item:hover, .palette-item.sel { background: var(--surface-warm); color: var(--text); }
+        .palette-item .k {
+            margin-left: auto; font-family: var(--mono); font-size: 10.5px; color: var(--text-4);
+            border: 1px solid var(--border); border-radius: 5px; padding: 1px 6px;
+        }
+        .palette-empty { padding: 22px; text-align: center; font-size: 13px; color: var(--text-3); }
+
+        /* ============ Responsive ============ */
+        @media (max-width: 920px) {
+            #sidebar { width: 58px; padding: 20px 8px; }
+            .brand-text, .nav-label, .nav-item span.nav-text, .nav-count, .sidebar-foot { display: none; }
+            .nav-item { justify-content: center; padding: 9px; }
+            .quality-grid { grid-template-columns: 1fr; }
+            .container { padding: 26px 18px 100px; }
+            .hero-title { font-size: 32px; }
+            .track-id { width: 92px; }
+            .track-ctl { width: 118px; }
+            .vol-slider { width: 48px; }
+            .analysis-strip { gap: 14px; }
+        }
     </style>
 </head>
 
-<body class="min-h-screen flex items-center justify-center p-4">
-    <div class="w-full max-w-4xl">
+<body>
+    <div id="shell">
+        <!-- ================= Sidebar ================= -->
+        <aside id="sidebar">
+            <div class="brand">
+                <div class="brand-mark">♪</div>
+                <div class="brand-text">
+                    <div class="brand-name">Stem Splitter</div>
+                    <div class="brand-sub">STUDIO</div>
+                </div>
+            </div>
 
-        <!-- ============ HEADER ============ -->
-        <header class="flex items-center gap-3 mb-6">
-            <div class="w-9 h-9 rounded-lg flex items-center justify-center text-lg" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">🎚️</div>
+            <nav class="nav-section">
+                <div class="nav-label">Workspace</div>
+                <button class="nav-item" data-route="upload" id="navUpload">
+                    <span class="nav-ico">＋</span><span class="nav-text">New split</span>
+                </button>
+                <button class="nav-item" data-route="library" id="navLibrary">
+                    <span class="nav-ico">☰</span><span class="nav-text">Library</span>
+                    <span class="nav-count" id="libCount"></span>
+                </button>
+            </nav>
+
+            <nav class="nav-section">
+                <div class="nav-label">Engine</div>
+                <div style="padding: 0 10px; font-size: 11px; color: var(--text-3); line-height: 1.9;" class="brand-text">
+                    <div>Fast · 6 stems</div>
+                    <div>Precision · ensemble</div>
+                    <div>Extended · 11 stems</div>
+                </div>
+            </nav>
+
+            <div class="sidebar-foot brand-text">
+                <div class="sys-row"><span><span class="gpu-dot" id="gpuDot"></span>GPU</span><span id="gpuText" class="mono" style="font-size:10px">idle</span></div>
+                <div class="sys-row" style="margin-top:4px"><span>Queue</span><span id="queueText" class="mono" style="font-size:10px">0</span></div>
+                <div class="sys-row" style="margin-top:4px"><span>Version</span><span id="verText" class="mono" style="font-size:10px">—</span></div>
+            </div>
+    </aside>
+
+    <!-- ================= Main ================= -->
+    <div id="main">
+        <header id="topbar">
             <div>
-                <h1 class="text-lg font-bold tracking-tight">Stem Splitter Studio</h1>
-                <p class="text-xs" style="color:var(--muted)">Up to 11-stem separation · vocal ensemble · instrument extraction</p>
+                <div class="topbar-title" id="topTitle">New split</div>
+                <div class="topbar-sub" id="topSub">Up to 11-stem AI separation</div>
+            </div>
+            <div class="topbar-actions">
+                <button class="btn sm" id="paletteBtn">Search<span class="mono" style="font-size:10px;color:var(--text-3)">⌘K</span></button>
             </div>
         </header>
 
-        <!-- ============ UPLOAD VIEW ============ -->
-        <div id="uploadView" class="space-y-4 fade-in">
+        <div id="content">
 
-            <div id="dropzone" class="panel rounded-2xl p-10 text-center cursor-pointer hover:border-indigo-500 transition"
-                style="border-style:dashed; border-width:2px;">
-                <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aac" class="hidden">
-                <div class="text-3xl mb-3">🎵</div>
-                <p class="text-sm font-medium">Drop a track, or <span class="text-indigo-400">browse</span></p>
-                <p class="text-xs mt-1" style="color:var(--muted)">wav · mp3 · flac · m4a — up to 300 MB</p>
-            </div>
+            <!-- ============ UPLOAD ============ -->
+            <section class="view" id="view-upload">
+                <div class="container">
+                    <div class="hero-eyebrow">AI STEM SEPARATION</div>
+                    <div class="hero-title">Pull every instrument out of <em>any</em> mix.</div>
+                    <div class="hero-sub">Vocals, drums, bass, guitar, piano — plus synth, strings, brass, organ and keys in Extended mode. Studio-grade models, running locally on your GPU.</div>
 
-            <div class="grid grid-cols-3 gap-3">
-                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="fast">
-                    <input type="radio" name="quality" value="fast" class="hidden" checked>
-                    <span class="block text-sm font-bold">⚡ Fast</span>
-                    <span class="block text-xs mt-1" style="color:var(--muted)">6 stems · ~9 min</span>
-                </label>
-                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="precision">
-                    <input type="radio" name="quality" value="precision" class="hidden">
-                    <span class="block text-sm font-bold">🎯 Precision</span>
-                    <span class="block text-xs mt-1" style="color:var(--muted)">6 stems · ensemble · lossless</span>
-                </label>
-                <label class="quality-card btn rounded-xl p-3 cursor-pointer" data-q="extended">
-                    <input type="radio" name="quality" value="extended" class="hidden">
-                    <span class="block text-sm font-bold">🪄 Extended</span>
-                    <span class="block text-xs mt-1" style="color:var(--muted)">11 stems · +synth/strings/brass/organ/keys</span>
-                </label>
-            </div>
-        </div>
-
-        <!-- ============ PROCESSING VIEW ============ -->
-        <div id="processingView" class="hidden panel rounded-2xl p-6 space-y-4 fade-in">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p id="procName" class="text-sm font-semibold truncate max-w-md"></p>
-                    <p id="procStage" class="text-xs mt-1" style="color:var(--accent)"></p>
-                </div>
-                <span id="procPercent" class="mono text-sm" style="color:var(--muted)">0%</span>
-            </div>
-            <div class="h-1.5 rounded-full overflow-hidden" style="background:#232833">
-                <div id="procBar" class="h-full rounded-full transition-all duration-500" style="width:0%; background:linear-gradient(90deg,#6366f1,#8b5cf6)"></div>
-            </div>
-            <p class="text-xs" style="color:var(--muted)">Precision/Extended modes run 2-4× slower — grab a coffee ☕</p>
-            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg panel-2 btn">Cancel view</button>
-        </div>
-
-        <!-- ============ ERROR VIEW ============ -->
-        <div id="errorView" class="hidden panel rounded-2xl p-6 space-y-3 fade-in" style="border-color:#7f1d1d">
-            <p class="text-sm font-bold text-red-400">Split failed</p>
-            <p id="errorText" class="text-xs text-red-300/80 break-words"></p>
-            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg btn text-red-200" style="background:#7f1d1d">Try again</button>
-        </div>
-
-        <!-- ============ PLAYER VIEW ============ -->
-        <div id="playerView" class="hidden space-y-4 fade-in">
-
-            <!-- track list -->
-            <div class="panel rounded-2xl overflow-hidden">
-                <div class="flex items-center justify-between px-5 py-3" style="border-bottom:1px solid var(--border)">
-                    <div class="flex items-center gap-2">
-                        <span id="playerName" class="text-sm font-semibold truncate max-w-xs"></span>
-                        <span id="playerBadge" class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full" style="background:rgba(99,102,241,.15); color:var(--accent)"></span>
+                    <div id="dropzone">
+                        <div class="dz-ico">◎</div>
+                        <div class="dz-main">Drop a track here, or <span class="link">browse files</span></div>
+                        <div class="dz-sub">wav · mp3 · flac · m4a · ogg — up to 300 MB</div>
+                        <input type="file" id="audioFile" accept="audio/*,.wav,.mp3,.flac,.m4a,.ogg,.aac" hidden>
                     </div>
-                    <a id="downloadAllBtn" href="#" class="text-xs px-3 py-1.5 rounded-lg btn font-semibold text-emerald-300" style="background:rgba(16,185,129,.12)">⬇ Download all (ZIP)</a>
-                </div>
-                <div id="trackList"></div>
-            </div>
 
-            <!-- transport -->
-            <div class="panel rounded-2xl p-4">
-                <div class="flex items-center gap-4">
-                    <button id="playBtn" class="w-11 h-11 rounded-full btn flex items-center justify-center text-lg font-bold text-white"
-                        style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">▶</button>
-                    <div class="flex-1">
-                        <div id="seekBar" class="relative h-6 cursor-pointer">
-                            <div class="absolute inset-x-0 top-1/2 -translate-y-1/2 h-1 rounded" style="background:#2a303c"></div>
-                            <div id="seekFill" class="absolute left-0 top-1/2 -translate-y-1/2 h-1 rounded" style="width:0%; background:var(--accent)"></div>
-                            <div id="seekKnob" class="absolute top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-white shadow" style="left:0%"></div>
+                    <div class="quality-grid" id="qualityGrid">
+                        <div class="card quality-card" data-q="fast">
+                            <div class="qc-title">⚡ Fast</div>
+                            <div class="qc-sub">6 stems · single vocal model · ~9 min per 5-min song</div>
                         </div>
-                        <div class="flex justify-between mono text-xs mt-1" style="color:var(--muted)">
-                            <span id="timeNow">0:00</span>
-                            <span id="timeTotal">0:00</span>
+                        <div class="card quality-card" data-q="precision">
+                            <div class="qc-badge rec">RECOMMENDED</div>
+                            <div class="qc-title">◆ Precision</div>
+                            <div class="qc-sub">6 stems · 2-model vocal ensemble · lossless gain · ~25 min</div>
+                        </div>
+                        <div class="card quality-card" data-q="extended">
+                            <div class="qc-title">◈ Extended</div>
+                            <div class="qc-sub">11 stems · adds synth, strings, brass, organ, keys · ~30 min</div>
                         </div>
                     </div>
-                    <div class="flex items-center gap-2 w-32">
-                        <span class="text-xs" style="color:var(--muted)">VOL</span>
-                        <input id="masterVol" type="range" min="0" max="100" value="90" class="flex-1">
+                </div>
+            </section>
+
+            <!-- ============ PROCESSING ============ -->
+            <section class="view" id="view-processing">
+                <div class="container">
+                    <div class="card proc-card">
+                        <div class="proc-meta">
+                            <div style="min-width:0">
+                                <div class="proc-name" id="procName">track.wav</div>
+                                <div class="proc-stage" id="procStage">Uploading…</div>
+                            </div>
+                            <span class="proc-percent" id="procPercent">0%</span>
+                        </div>
+                        <div class="bar"><div class="bar-fill" id="procBar"></div></div>
+                        <div class="stage-steps" id="stageSteps">
+                            <span class="stage-chip" data-step="upload">Upload</span>
+                            <span class="stage-chip" data-step="pass1">Vocals</span>
+                            <span class="stage-chip" data-step="pass2">Split</span>
+                            <span class="stage-chip" data-step="pass3">Extract</span>
+                        </div>
+                        <div class="proc-hint">Precision runs 2–4× slower than Fast. You can leave this page — the job keeps running server-side and appears in your Library.</div>
+                        <div style="margin-top: 18px; display: flex; gap: 9px;">
+                            <button class="btn sm" id="openLibraryBtn">View library →</button>
+                        </div>
                     </div>
                 </div>
-            </div>
+            </section>
 
-            <button onclick="resetUI()" class="text-xs px-3 py-1.5 rounded-lg panel-2 btn">Split another track</button>
+            <!-- ============ ERROR ============ -->
+            <section class="view" id="view-error">
+                <div class="container">
+                    <div class="card err-card">
+                        <div class="err-title">✕ Split failed</div>
+                        <div class="err-msg" id="errMsg">Unknown error</div>
+                        <div style="margin-top: 18px; display: flex; gap: 9px;">
+                            <button class="btn sm primary" id="errRetry">Try again</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ============ LIBRARY ============ -->
+            <section class="view" id="view-library">
+                <div class="container">
+                    <div class="lib-head">
+                        <div>
+                            <div class="lib-title">Library</div>
+                            <div class="lib-count" id="libSummary"></div>
+                        </div>
+                        <button class="btn primary" id="libNewBtn">＋ New split</button>
+                    </div>
+                    <div class="job-list card" id="jobList"></div>
+                </div>
+            </section>
+
+            <!-- ============ PLAYER ============ -->
+            <section class="view" id="view-player">
+                <div class="container">
+                    <div class="player-head">
+                        <div class="player-name" id="playerName">Track</div>
+                        <div class="player-tags">
+                            <span class="chip" id="playerQuality">fast</span>
+                            <span class="chip"><span class="dot" style="background:var(--accent)"></span><span id="playerStemCountText">6 stems</span></span>
+                        </div>
+                    </div>
+
+                    <div class="analysis-strip" id="analysisStrip" style="display:none">
+                        <div><span class="lbl">Duration</span><b id="anDuration">—</b></div>
+                        <div><span class="lbl">BPM</span><b id="anBpm">—</b></div>
+                        <div><span class="lbl">Sample rate</span><b id="anSr">—</b></div>
+                        <div><span class="lbl">Quality</span><b id="anQuality">—</b></div>
+                        <div><span class="lbl">Stems</span><b id="anStems">—</b></div>
+                    </div>
+
+                    <div class="card tracks-card" id="trackList"></div>
+
+                    <div style="margin-top: 16px; display: flex; gap: 9px; flex-wrap: wrap;">
+                        <button class="btn sm" id="playerBack">← Library</button>
+                        <button class="btn sm" id="muteAllBtn">Mute all</button>
+                        <button class="btn sm" id="resetMixBtn">Reset mix</button>
+                        <button class="btn sm" id="savePresetBtn">Save preset</button>
+                        <button class="btn sm" id="loadPresetBtn">Load preset</button>
+                        <button class="btn sm primary" id="exportMixBtn">⬇ Export mix</button>
+                        <a class="btn sm warm" id="downloadAllBtn" href="#">⬇ All stems (ZIP)</a>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- Sticky transport -->
+        <div id="transport">
+            <div class="tp-row">
+                <button class="play-btn" id="playBtn" tabindex="-1">▶</button>
+                <div class="seek-wrap" id="seekWrap">
+                    <div class="seek-track">
+                        <div class="seek-rail"></div>
+                        <div class="seek-fill" id="seekFill"></div>
+                        <div class="seek-knob" id="seekKnob"></div>
+                    </div>
+                    <div class="time-row">
+                        <span class="time" id="timeNow">0:00</span>
+                        <span class="time" id="timeTotal">0:00</span>
+                    </div>
+                </div>
+                <div class="master-wrap">
+                    <span class="label">MASTER</span>
+                    <input type="range" min="0" max="100" value="90" class="vol-slider" id="masterVol">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toasts -->
+    <div id="toasts"></div>
+
+    <!-- Command palette -->
+    <div id="palette">
+        <div class="palette-card">
+            <input class="palette-input" id="paletteInput" placeholder="Type a command or search tracks…" autocomplete="off">
+            <div class="palette-list" id="paletteList"></div>
         </div>
     </div>
 
     <script>
-        // ================= state =================
+        'use strict';
+        /* =====================================================================
+           §1 STATE
+        ===================================================================== */
         const STEM_COLORS = {
-            vocals: '#f43f5e', drums: '#f59e0b', bass: '#0ea5e9', guitar: '#22c55e',
-            piano: '#a855f7', other: '#94a3b8', synth: '#06b6d4', strings: '#ec4899',
-            brass: '#eab308', organ: '#8b5cf6', keys: '#14b8a6',
+            vocals: '#e05252', drums: '#d99a2b', bass: '#3e8fb8', guitar: '#4caf7d',
+            piano: '#9d6fd1', other: '#8a8f98', synth: '#2ba8a8', strings: '#d4699f',
+            brass: '#c9a13b', organ: '#7e6cc9', keys: '#3aa394',
         };
-        const stems = [];          // {key, name, url, color, peaks, buffer, gain, vol, muted, solo}
-        let audioCtx = null, masterGain = null;
-        let playing = false, playhead = 0, startedAt = 0, rafId = null;
-        let duration = 0, pollTimer = null, crawl = 0;
 
+        const App = {
+            view: null,
+            jobId: null, job: null, stems: [],
+            quality: 'precision',           // new default (was fast)
+            pollTimer: null, crawl: 0,
+            audio: { ctx: null, master: null, playing: false, playhead: 0, startedAt: 0, duration: 0 },
+        };
         const $ = (id) => document.getElementById(id);
 
-        // ================= upload flow =================
-        document.querySelectorAll('.quality-card').forEach(card => {
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.quality-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                card.querySelector('input').checked = true;
-            });
-        });
-        document.querySelector('.quality-card[data-q="fast"]').classList.add('selected');
-
-        const dropzone = $('dropzone'), fileInput = $('audioFile');
-        dropzone.onclick = () => fileInput.click();
-        fileInput.onchange = (e) => { if (e.target.files.length) handleUpload(e.target.files[0]); };
-        dropzone.ondragover = (e) => { e.preventDefault(); dropzone.style.borderColor = '#6366f1'; };
-        dropzone.ondragleave = () => dropzone.style.borderColor = '';
-        dropzone.ondrop = (e) => {
-            e.preventDefault(); dropzone.style.borderColor = '';
-            if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
-        };
-
-        function resetUI() {
-            clearTimeout(pollTimer); cancelAnimationFrame(rafId);
-            if (playing) stopPlayback();
-            ['processingView', 'errorView', 'playerView'].forEach(v => $(v).classList.add('hidden'));
-            $('uploadView').classList.remove('hidden');
-            stems.length = 0; duration = 0; playhead = 0; crawl = 0;
-            $('trackList').innerHTML = '';
+        /* =====================================================================
+           §2 TOASTS
+        ===================================================================== */
+        function toast(msg, ms = 2600) {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.innerHTML = `<span>✓</span><span>${msg}</span>`;
+            $('toasts').appendChild(t);
+            setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, ms);
         }
 
-        function handleUpload(file) {
-            $('uploadView').classList.add('hidden');
-            $('processingView').classList.remove('hidden');
-            $('errorView').classList.add('hidden');
-            $('procName').textContent = file.name;
-            $('procStage').textContent = 'Uploading…';
-            crawl = 0;
+        /* =====================================================================
+           §3 ROUTER
+        ===================================================================== */
+        const VIEWS = ['upload', 'processing', 'error', 'library', 'player'];
 
-            const fd = new FormData();
-            fd.append('file', file);
-            fd.append('quality', document.querySelector('input[name="quality"]:checked').value);
+        function route(hash) {
+            const h = (hash || '').replace(/^#\/?/, '');
+            if (h.startsWith('job/')) { openJob(h.split('/')[1]); return; }
+            if (h === 'library') { showView('library'); loadLibrary(); return; }
+            if (h === 'processing' && App.jobId) { showView('processing'); return; }
+            showView('upload');
+        }
 
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', '/api/upload', true);
-            xhr.upload.onprogress = (e) => {
-                if (e.lengthComputable) {
-                    const pct = Math.round((e.loaded / e.total) * 100);
-                    setProgress(pct * 0.4, `Uploading (${pct}%)`);
+        function showView(name) {
+            if (App.view === name) return;
+            if (App.view === 'player') teardownPlayer();
+            if (App.view === 'processing') clearTimeout(App.pollTimer);
+            App.view = name;
+            VIEWS.forEach(v => $(`view-${v}`).classList.toggle('active', v === name));
+            $('transport').classList.toggle('on', name === 'player');
+
+            $('navUpload').classList.toggle('active', name === 'upload' || name === 'processing');
+            $('navLibrary').classList.toggle('active', name === 'library');
+            const titles = {
+                upload: ['New split', 'Up to 11-stem AI separation'],
+                processing: ['Processing', 'Running on GPU'],
+                error: ['Failed', 'Job error'],
+                library: ['Library', 'Your separated tracks'],
+                player: ['Player', 'Stem mixer & export'],
+            };
+            $('topTitle').textContent = titles[name][0];
+            $('topSub').textContent = titles[name][1];
+        }
+
+        function navigate(hash) { location.hash = hash; }
+
+        document.querySelectorAll('.nav-item').forEach(n =>
+            n.addEventListener('click', () => navigate(n.dataset.route === 'upload' ? '#/upload' : '#/library')));
+
+        window.addEventListener('hashchange', () => route(location.hash));
+
+        async function openJob(id) {
+            App.jobId = id;
+            try {
+                const res = await fetch(`/api/status/${id}`);
+                const data = await res.json();
+                App.job = data;
+                if (data.status === 'completed') {
+                    showView('player');
+                    buildPlayer(data);
+                } else if (data.status === 'error') {
+                    showView('error');
+                    $('errMsg').textContent = data.error || 'Unknown error';
+                } else if (data.status === 'unknown') {
+                    navigate('#/library');
+                } else {
+                    showView('processing');
+                    $('procName').textContent = data.name || id;
+                    pollStatus(id);
                 }
-            };
-            xhr.onload = () => {
-                try {
-                    const data = JSON.parse(xhr.responseText);
-                    if (data.job_id) { setProgress(40, 'Queued — waiting for GPU…'); pollStatus(data.job_id); }
-                    else showError(data.message || 'Backend rejected the upload.');
-                } catch { showError(`Server error ${xhr.status}`); }
-            };
-            xhr.onerror = () => showError('Network error — is the server running on :8000?');
-            xhr.send(fd);
+            } catch { navigate('#/library'); }
+        }
+
+        /* =====================================================================
+           §4 API
+        ===================================================================== */
+        function uploadFile(file, quality, onProgress) {
+            return new Promise((resolve, reject) => {
+                const fd = new FormData();
+                fd.append('file', file);
+                fd.append('quality', quality);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/api/upload', true);
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+                };
+                xhr.onload = () => {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if (xhr.status >= 200 && xhr.status < 300) resolve(data);
+                        else reject(new Error(data.message || `HTTP ${xhr.status}`));
+                    } catch { reject(new Error(`HTTP ${xhr.status}`)); }
+                };
+                xhr.onerror = () => reject(new Error('Network error — is the server on :8000?'));
+                xhr.send(fd);
+            });
+        }
+
+        async function pollStatus(jobId) {
+            try {
+                const res = await fetch(`/api/status/${jobId}`);
+                const data = await res.json();
+                App.job = data;
+                if (data.status === 'processing') {
+                    if (App.crawl < 93) App.crawl += 0.4 + Math.random() * 0.35;
+                    setProgress(App.crawl, data.stage || 'Processing on GPU…');
+                    updateStageChips(data.stage || '');
+                    setGpu(true);
+                    App.pollTimer = setTimeout(() => pollStatus(jobId), 2500);
+                } else if (data.status === 'queued') {
+                    setProgress(42, 'Queued — waiting for the GPU worker…');
+                    setGpu(false, 'queued');
+                    App.pollTimer = setTimeout(() => pollStatus(jobId), 2000);
+                } else if (data.status === 'completed') {
+                    setProgress(100, 'Done');
+                    setGpu(false);
+                    showView('player');
+                    buildPlayer(data);
+                    toast('Separation complete');
+                } else if (data.status === 'error') {
+                    setGpu(false, 'error');
+                    $('errMsg').textContent = data.error || 'Unknown error';
+                    showView('error');
+                } else {
+                    App.pollTimer = setTimeout(() => pollStatus(jobId), 2000);
+                }
+            } catch {
+                App.pollTimer = setTimeout(() => pollStatus(jobId), 4000);
+            }
         }
 
         function setProgress(pct, label) {
@@ -216,246 +756,552 @@
             if (label) $('procStage').textContent = label;
         }
 
-        async function pollStatus(jobId) {
+        function updateStageChips(stage) {
+            const chips = document.querySelectorAll('.stage-chip');
+            const q = App.job?.quality || 'fast';
+            const s = stage.toLowerCase();
+            const state = {
+                upload: 'done',
+                pass1: s.includes('pass 1') ? 'active' : (s.includes('pass 2') || s.includes('pass 3') || s.includes('done') ? 'done' : ''),
+                pass2: s.includes('pass 2') ? 'active' : (s.includes('pass 3') || s.includes('done') ? 'done' : ''),
+                pass3: s.includes('pass 3') ? 'active' : (s.includes('done') ? 'done' : ''),
+            };
+            if (q !== 'extended') state.pass3 = 'done';
+            chips.forEach(c => {
+                const st = state[c.dataset.step] || '';
+                c.classList.toggle('active', st === 'active');
+                c.classList.toggle('done', st === 'done');
+            });
+        }
+
+        function setGpu(busy, text) {
+            $('gpuDot').className = 'gpu-dot' + (busy ? ' busy' : '');
+            $('gpuText').textContent = busy ? 'busy' : (text || 'idle');
+        }
+
+        /* =====================================================================
+           §5 UPLOAD VIEW
+        ===================================================================== */
+        const dz = $('dropzone'), fileInput = $('audioFile');
+        dz.onclick = () => fileInput.click();
+        fileInput.onchange = (e) => { if (e.target.files.length) startUpload(e.target.files[0]); };
+        dz.ondragover = (e) => { e.preventDefault(); dz.classList.add('drag'); };
+        dz.ondragleave = () => dz.classList.remove('drag');
+        dz.ondrop = (e) => {
+            e.preventDefault(); dz.classList.remove('drag');
+            if (e.dataTransfer.files.length) startUpload(e.dataTransfer.files[0]);
+        };
+
+        document.querySelectorAll('.quality-card').forEach(card => {
+            card.addEventListener('click', () => selectQuality(card.dataset.q));
+        });
+        selectQuality('precision');
+        function selectQuality(q) {
+            App.quality = q;
+            document.querySelectorAll('.quality-card').forEach(c =>
+                c.classList.toggle('selected', c.dataset.q === q));
+        }
+
+        async function startUpload(file) {
+            showView('processing');
+            App.crawl = 0;
+            $('procName').textContent = file.name;
+            setProgress(0, 'Uploading…');
+            updateStageChips('upload');
             try {
-                const res = await fetch(`/api/status/${jobId}`);
-                const data = await res.json();
-                if (data.status === 'processing') {
-                    if (crawl < 93) crawl += 0.5 + Math.random() * 0.4;
-                    setProgress(crawl, data.stage || 'Processing on GPU…');
-                    pollTimer = setTimeout(() => pollStatus(jobId), 2500);
-                } else if (data.status === 'queued') {
-                    setProgress(42, 'Queued — waiting for the GPU worker…');
-                    pollTimer = setTimeout(() => pollStatus(jobId), 2000);
-                } else if (data.status === 'completed') {
-                    setProgress(100, 'Done');
-                    setTimeout(() => buildPlayer(data), 300);
-                } else if (data.status === 'error') {
-                    showError(data.error || 'Unknown backend error');
-                } else {
-                    pollTimer = setTimeout(() => pollStatus(jobId), 2000);
+                const { job_id } = await uploadFile(file, App.quality, (frac) =>
+                    setProgress(frac * 40, `Uploading (${Math.round(frac * 100)}%)`));
+                App.jobId = job_id;
+                history.replaceState(null, '', `#/job/${job_id}`);
+                setProgress(40, 'Queued — waiting for the GPU worker…');
+                pollStatus(job_id);
+            } catch (err) {
+                $('errMsg').textContent = err.message;
+                showView('error');
+            }
+        }
+
+        $('openLibraryBtn').onclick = () => navigate('#/library');
+        $('errRetry').onclick = () => navigate('#/upload');
+        $('libNewBtn').onclick = () => navigate('#/upload');
+        $('playerBack').onclick = () => navigate('#/library');
+
+        /* =====================================================================
+           §6 LIBRARY VIEW
+        ===================================================================== */
+        async function loadLibrary() {
+            try {
+                const res = await fetch('/api/jobs');
+                const { jobs } = await res.json();
+                $('libSummary').textContent = jobs.length
+                    ? `${jobs.length} track${jobs.length > 1 ? 's' : ''} separated`
+                    : 'Nothing here yet';
+                $('libCount').textContent = jobs.length || '';
+                const list = $('jobList');
+                if (!jobs.length) {
+                    list.innerHTML = `
+                        <div class="empty-state">
+                            <div class="empty-ico">◎</div>
+                            <div class="empty-title">No tracks yet</div>
+                            <div class="empty-sub">Separated tracks appear here — even after a server restart.</div>
+                            <button class="btn primary" onclick="navigate('#/upload')">＋ Split your first track</button>
+                        </div>`;
+                    return;
                 }
-            } catch { pollTimer = setTimeout(() => pollStatus(jobId), 4000); }
+                list.innerHTML = jobs.map(j => `
+                    <div class="job-row" data-job="${j.id}">
+                        <div class="job-art">♪</div>
+                        <div class="job-info">
+                            <div class="job-name">${esc(j.name)}</div>
+                            <div class="job-meta">
+                                <span class="chip" style="padding:1px 9px">${j.quality}</span>
+                                <span>${j.stem_count} stems</span>
+                                <span>${timeAgo(j.timestamp)}</span>
+                            </div>
+                        </div>
+                        <span style="color:var(--text-4);font-size:16px">→</span>
+                    </div>`).join('');
+                list.querySelectorAll('.job-row').forEach(row =>
+                    row.addEventListener('click', () => navigate(`#/job/${row.dataset.job}`)));
+            } catch {
+                $('jobList').innerHTML = '<div class="empty-state"><div class="empty-title">Could not load library</div><div class="empty-sub">Is the server running?</div></div>';
+            }
         }
 
-        function showError(msg) {
-            clearTimeout(pollTimer);
-            $('processingView').classList.add('hidden');
-            $('errorView').classList.remove('hidden');
-            $('errorText').textContent = msg;
+        function timeAgo(ts) {
+            const d = Date.now() - ts;
+            const min = Math.floor(d / 60000);
+            if (min < 1) return 'just now';
+            if (min < 60) return `${min}m ago`;
+            const hr = Math.floor(min / 60);
+            if (hr < 24) return `${hr}h ago`;
+            return `${Math.floor(hr / 24)}d ago`;
+        }
+        function esc(s) {
+            return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
-        // ================= player =================
+        /* =====================================================================
+           §7 AUDIO ENGINE + PLAYER
+        ===================================================================== */
+        function teardownPlayer() {
+            if (App.audio.playing) stopPlayback();
+            App.stems = [];
+            App.audio.duration = 0; App.audio.playhead = 0;
+            $('trackList').innerHTML = '';
+            $('analysisStrip').style.display = 'none';
+        }
+
         async function buildPlayer(data) {
-            $('processingView').classList.add('hidden');
-            $('playerView').classList.remove('hidden');
-            $('playerName').textContent = data.name || 'track';
-            $('playerBadge').textContent = (data.quality || 'fast') + (data.quality === 'extended' ? ' · 11 stems' : '');
-            $('downloadAllBtn').href = `/api/download/${data.stems[0].split('/')[3]}`;
-
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            masterGain = audioCtx.createGain();
-            masterGain.gain.value = 0.9;
-            masterGain.connect(audioCtx.destination);
-
+            teardownPlayer();
+            App.jobId = data.stems ? data.stems[0].split('/')[3] : App.jobId;
+            $('playerName').textContent = data.name || 'Track';
+            $('playerQuality').textContent = data.quality || 'fast';
             const details = data.stem_details || [];
+            $('playerStemCountText').textContent = `${data.stems.length} stems`;
+            $('downloadAllBtn').href = `/api/download/${App.jobId}`;
+            $('playBtn').style.opacity = '0.4';
+            $('playBtn').style.pointerEvents = 'none';
+
+            if (!App.audio.ctx) {
+                App.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                App.audio.master = App.audio.ctx.createGain();
+                App.audio.master.gain.value = 0.9;
+                App.audio.master.connect(App.audio.ctx.destination);
+            }
+
             for (let i = 0; i < data.stems.length; i++) {
                 const url = data.stems[i];
-                const file = url.split('/').pop().replace('.wav', '');
+                const key = url.split('/').pop().replace('.wav', '');
                 const stem = {
-                    key: file, name: details[i]?.name || file, url, color: STEM_COLORS[file] || '#888',
-                    peaks: null, buffer: null, gain: audioCtx.createGain(), vol: 0.9, muted: false, solo: false,
+                    key, name: details[i]?.name || key, url,
+                    color: STEM_COLORS[key] || '#8a8f98',
+                    peaks: null, buffer: null, failed: false,
+                    gain: App.audio.ctx.createGain(), vol: 0.9, muted: false, solo: false, source: null,
                 };
-                stems.push(stem);
+                App.stems.push(stem);
                 renderTrackRow(stem);
-                // decode async, draw waveform when ready
-                loadStemAudio(stem).then(() => drawWaveform(stem));
+                loadStem(stem).then(() => {
+                    const loading = document.querySelector(`[data-loading="${stem.key}"]`);
+                    if (loading) loading.remove();
+                    const cv = document.querySelector(`canvas[data-stem="${stem.key}"]`);
+                    if (cv) cv.style.display = 'block';
+                    $('playBtn').style.opacity = '1';
+                    $('playBtn').style.pointerEvents = 'auto';
+                    drawWaveform(stem);
+                }).catch(() => {
+                    stem.failed = true;
+                    const loading = document.querySelector(`[data-loading="${stem.key}"]`);
+                    if (loading) loading.innerHTML = '<div style="font-size:10px;color:var(--text-3);text-align:center;line-height:38px;">unavailable — use download</div>';
+                    const row = document.querySelector(`[data-row="${stem.key}"]`);
+                    if (row) row.style.opacity = '0.45';
+                });
             }
+
+            // Fire-and-forget analysis (BPM etc.)
+            fetch(`/api/analysis/${App.jobId}`).then(r => r.json()).then(a => {
+                if (a.duration) {
+                    $('anDuration').textContent = fmtTime(a.duration);
+                    $('anBpm').textContent = a.bpm ?? '—';
+                    $('anSr').textContent = (a.sample_rate / 1000) + ' kHz';
+                    $('anQuality').textContent = a.quality;
+                    $('anStems').textContent = a.stems;
+                    $('analysisStrip').style.display = 'flex';
+                }
+            }).catch(() => { });
         }
 
         function renderTrackRow(stem) {
             const row = document.createElement('div');
-            row.className = 'flex items-center gap-3 px-5 py-2.5 hover:bg-white/[.02] transition';
+            row.className = 'track-row';
+            row.dataset.row = stem.key;
             row.innerHTML = `
-                <div class="w-24 shrink-0 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full shrink-0" style="background:${stem.color}"></span>
-                    <span class="text-xs font-semibold truncate">${stem.name}</span>
+                <div class="track-id">
+                    <span class="track-dot" style="background:${stem.color}"></span>
+                    <span class="track-name">${esc(stem.name)}</span>
                 </div>
-                <canvas class="stem-wave flex-1 h-10 rounded cursor-pointer" data-stem="${stem.key}" style="background:#0d1016; width:100%"></canvas>
-                <div class="w-28 shrink-0 flex items-center gap-2">
-                    <input type="range" min="0" max="100" value="90" class="flex-1 stem-vol" data-stem="${stem.key}">
-                    <button class="w-6 h-6 rounded text-[10px] font-bold btn stem-mute" data-stem="${stem.key}" style="background:#232833; color:var(--muted)">M</button>
-                    <button class="w-6 h-6 rounded text-[10px] font-bold btn stem-solo" data-stem="${stem.key}" style="background:#232833; color:var(--muted)">S</button>
+                <div class="track-wave-wrap"><div class="wave-loading" data-loading="${stem.key}"><div class="wave-loading-bar"></div></div><canvas class="track-wave" data-stem="${stem.key}"></canvas></div>
+                <div class="track-ctl">
+                    <input type="range" min="0" max="100" value="90" class="vol-slider" data-stem="${stem.key}">
+                    <button class="ms-btn" data-ms="mute" data-stem="${stem.key}">M</button>
+                    <button class="ms-btn" data-ms="solo" data-stem="${stem.key}">S</button>
                 </div>`;
             $('trackList').appendChild(row);
 
-            row.querySelector('.stem-vol').addEventListener('input', (e) => {
-                stem.vol = e.target.value / 100; applyGains();
-            });
-            row.querySelector('.stem-mute').addEventListener('click', (e) => {
-                stem.muted = !stem.muted; styleMSS(e.target, stem.muted); applyGains();
-            });
-            row.querySelector('.stem-solo').addEventListener('click', (e) => {
-                stem.solo = !stem.solo;
-                document.querySelectorAll('.stem-solo').forEach(b => {
-                    const s = stems.find(x => x.key === b.dataset.stem);
-                    styleMSS(b, s.solo, true);
-                });
+            row.querySelector('.vol-slider').addEventListener('input', (e) => {
+                stem.vol = e.target.value / 100;
                 applyGains();
             });
-            // click waveform = seek
-            row.querySelector('.stem-wave').addEventListener('click', (e) => {
+            row.querySelector('[data-ms="mute"]').addEventListener('click', (e) => {
+                stem.muted = !stem.muted;
+                e.target.classList.toggle('muted', stem.muted);
+                applyGains();
+            });
+            row.querySelector('[data-ms="solo"]').addEventListener('click', (e) => {
+                stem.solo = !stem.solo;
+                e.target.classList.toggle('solo', stem.solo);
+                applyGains();
+            });
+            row.querySelector('.track-wave').addEventListener('click', (e) => {
                 const rect = e.currentTarget.getBoundingClientRect();
-                seekTo(((e.clientX - rect.left) / rect.width) * duration);
+                seekTo(((e.clientX - rect.left) / rect.width) * App.audio.duration);
             });
         }
 
-        function styleMSS(btn, on, isSolo = false) {
-            if (on) { btn.style.background = isSolo ? '#eab308' : '#ef4444'; btn.style.color = '#fff'; }
-            else { btn.style.background = '#232833'; btn.style.color = 'var(--muted)'; }
-        }
-
-        async function loadStemAudio(stem) {
+        async function loadStem(stem) {
             const res = await fetch(stem.url);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const buf = await res.arrayBuffer();
-            stem.buffer = await audioCtx.decodeAudioData(buf);
-            if (stem.buffer.duration > duration) duration = stem.buffer.duration;
-            $('timeTotal').textContent = fmtTime(duration);
-            // compute peaks: 1500 buckets of min/max
+            stem.buffer = await App.audio.ctx.decodeAudioData(buf);
+            if (stem.buffer.duration > App.audio.duration) App.audio.duration = stem.buffer.duration;
+            $('timeTotal').textContent = fmtTime(App.audio.duration);
+
             const ch = stem.buffer.getChannelData(0);
             const ch2 = stem.buffer.numberOfChannels > 1 ? stem.buffer.getChannelData(1) : ch;
-            const buckets = 1500, size = Math.floor(ch.length / buckets) || 1;
-            const peaks = new Float32Array(buckets * 2);
+            const buckets = 1500, size = Math.max(1, Math.floor(ch.length / buckets));
+            const peaks = new Float32Array(buckets);
             for (let i = 0; i < buckets; i++) {
-                let mn = 1, mx = -1;
+                let sum = 0;
                 const start = i * size, end = Math.min(start + size, ch.length);
-                for (let j = start; j < end; j++) {
-                    const v = Math.abs(ch[j] + ch2[j]) / 2;
-                    if (v < mn) mn = v; if (v > mx) mx = v;
-                }
-                peaks[i * 2] = mn; peaks[i * 2 + 1] = mx;
+                for (let j = start; j < end; j++) sum += Math.abs((ch[j] + ch2[j]) / 2);
+                peaks[i] = sum / Math.max(1, end - start);
             }
             stem.peaks = peaks;
         }
 
         function drawWaveform(stem, progress = -1) {
-            const canvas = document.querySelector(`canvas.stem-wave[data-stem="${stem.key}"]`);
+            const canvas = document.querySelector(`canvas[data-stem="${stem.key}"]`);
             if (!canvas || !stem.peaks) return;
             const dpr = window.devicePixelRatio || 1;
-            const w = canvas.clientWidth, h = canvas.clientHeight;
-            canvas.width = w * dpr; canvas.height = h * dpr;
-            const ctx2 = canvas.getContext('2d');
-            ctx2.scale(dpr, dpr);
-            ctx2.clearRect(0, 0, w, h);
-
-            const n = stem.peaks.length / 2, mid = h / 2;
+            const w = canvas.clientWidth || 400, h = canvas.clientHeight || 38;
+            if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+            const c = canvas.getContext('2d');
+            c.setTransform(dpr, 0, 0, dpr, 0, 0);
+            c.clearRect(0, 0, w, h);
+            const n = stem.peaks.length, mid = h / 2;
             const progressX = progress >= 0 ? progress * w : w;
             for (let x = 0; x < w; x++) {
-                const i = Math.floor((x / w) * n);
-                const amp = (stem.peaks[i * 2] + stem.peaks[i * 2 + 1]) / 2;
-                const bh = Math.max(1, amp * (h * 0.92));
-                ctx2.fillStyle = x < progressX ? stem.color : stem.color + '33';
-                ctx2.fillRect(x, mid - bh / 2, 1, bh);
+                const i = Math.min(n - 1, Math.floor((x / w) * n));
+                const bh = Math.max(1, stem.peaks[i] * h * 0.92);
+                c.fillStyle = x < progressX ? stem.color : '#dedad2';
+                c.fillRect(x, mid - bh / 2, 1, bh);
             }
         }
 
-        function redrawAllWaveforms(progress) {
-            stems.forEach(s => drawWaveform(s, progress));
-        }
+        function redrawAll(progress) { App.stems.forEach(s => drawWaveform(s, progress)); }
 
-        // ================= playback engine =================
         function applyGains() {
-            const anySolo = stems.some(s => s.solo);
-            stems.forEach(s => {
+            const anySolo = App.stems.some(s => s.solo);
+            App.stems.forEach(s => {
                 const audible = anySolo ? s.solo : !s.muted;
                 const target = audible ? s.vol : 0;
-                s.gain.gain.setTargetAtTime(target, audioCtx.currentTime, 0.01);
+                s.gain.gain.setTargetAtTime(target, App.audio.ctx.currentTime, 0.01);
             });
         }
 
         function startPlayback() {
-            if (!stems.length || !stems[0].buffer) return;
-            audioCtx.resume();
-            playing = true;
-            startedAt = audioCtx.currentTime - playhead;
-            stems.forEach(s => {
+            if (!App.stems.length || !App.stems.find(s => s.buffer)) return;
+            App.audio.ctx.resume();
+            App.audio.playing = true;
+            App.audio.startedAt = App.audio.ctx.currentTime - App.audio.playhead;
+            App.stems.forEach(s => {
                 if (s.buffer) {
-                    const src = audioCtx.createBufferSource();
+                    const src = App.audio.ctx.createBufferSource();
                     src.buffer = s.buffer;
                     src.connect(s.gain);
-                    s.gain.connect(masterGain);
-                    src.start(0, playhead);
+                    s.gain.connect(App.audio.master);
+                    src.start(0, App.audio.playhead);
                     s.source = src;
                 }
             });
+            applyGains();
             $('playBtn').textContent = '⏸';
-            rafId = requestAnimationFrame(tick);
+            requestAnimationFrame(tick);
         }
 
         function stopPlayback() {
-            playing = false;
-            stems.forEach(s => { if (s.source) { try { s.source.stop(); } catch {} s.source.disconnect(); s.source = null; } });
+            App.audio.playing = false;
+            App.stems.forEach(s => {
+                if (s.source) { try { s.source.stop(); } catch { } s.source.disconnect(); s.source = null; }
+            });
             $('playBtn').textContent = '▶';
-            cancelAnimationFrame(rafId);
         }
 
         function seekTo(t) {
-            const wasPlaying = playing;
-            if (playing) stopPlayback();
-            playhead = Math.max(0, Math.min(t, duration));
-            if (wasPlaying) startPlayback(); else { redrawAllWaveforms(playhead / duration); updateTransport(); }
+            const wasPlaying = App.audio.playing;
+            if (wasPlaying) stopPlayback();
+            App.audio.playhead = Math.max(0, Math.min(t, App.audio.duration || 0));
+            if (wasPlaying) startPlayback();
+            else { redrawAll(App.audio.duration ? App.audio.playhead / App.audio.duration : 0); updateTransport(); }
         }
 
         function tick() {
-            if (!playing) return;
-            playhead = audioCtx.currentTime - startedAt;
-            if (playhead >= duration) { stopPlayback(); playhead = 0; redrawAllWaveforms(0); updateTransport(); return; }
-            redrawAllWaveforms(playhead / duration);
+            if (!App.audio.playing) return;
+            App.audio.playhead = App.audio.ctx.currentTime - App.audio.startedAt;
+            if (App.audio.playhead >= App.audio.duration) {
+                stopPlayback();
+                App.audio.playhead = 0;
+                redrawAll(0); updateTransport();
+                return;
+            }
+            redrawAll(App.audio.playhead / App.audio.duration);
             updateTransport();
-            rafId = requestAnimationFrame(tick);
+            requestAnimationFrame(tick);
         }
 
         function updateTransport() {
-            const pct = duration ? (playhead / duration) * 100 : 0;
+            const pct = App.audio.duration ? (App.audio.playhead / App.audio.duration) * 100 : 0;
             $('seekFill').style.width = pct + '%';
             $('seekKnob').style.left = pct + '%';
-            $('timeNow').textContent = fmtTime(playhead);
+            $('timeNow').textContent = fmtTime(App.audio.playhead);
         }
-
         function fmtTime(s) {
             const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-            return m + ':' + String(sec).padStart(2, '0');
+            return `${m}:${String(sec).padStart(2, '0')}`;
         }
 
-        $('playBtn').onclick = () => playing ? stopPlayback() : startPlayback();
-        $('masterVol').oninput = (e) => { if (masterGain) masterGain.gain.value = e.target.value / 100; };
-        $('seekBar').addEventListener('click', (e) => {
+        $('playBtn').onclick = () => App.audio.playing ? stopPlayback() : startPlayback();
+        $('masterVol').oninput = (e) => App.audio.master && App.audio.master.gain.setTargetAtTime(e.target.value / 100, App.audio.ctx.currentTime, 0.01);
+        $('seekWrap').addEventListener('click', (e) => {
             const rect = e.currentTarget.getBoundingClientRect();
-            seekTo(((e.clientX - rect.left) / rect.width) * duration);
+            seekTo(((e.clientX - rect.left) / rect.width) * App.audio.duration);
+        });
+
+        $('muteAllBtn').onclick = () => {
+            App.stems.forEach(s => { s.muted = true; s.solo = false; });
+            document.querySelectorAll('[data-ms="mute"]').forEach(b => b.classList.add('muted'));
+            document.querySelectorAll('[data-ms="solo"]').forEach(b => b.classList.remove('solo'));
+            applyGains();
+        };
+        $('resetMixBtn').onclick = () => {
+            App.stems.forEach(s => { s.muted = false; s.solo = false; s.vol = 0.9; });
+            document.querySelectorAll('[data-ms="mute"]').forEach(b => b.classList.remove('muted'));
+            document.querySelectorAll('[data-ms="solo"]').forEach(b => b.classList.remove('solo'));
+            document.querySelectorAll('.vol-slider[data-stem]').forEach(v => v.value = 90);
+            $('masterVol').value = 90;
+            if (App.audio.master) App.audio.master.gain.value = 0.9;
+            applyGains();
+        };
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && App.view === 'player') {
+                e.preventDefault();
+                App.audio.playing ? stopPlayback() : startPlayback();
+            }
+        });
+        document.querySelectorAll('button').forEach(b => b.addEventListener('mouseup', () => b.blur()));
+
+        /* =====================================================================
+           §8 MIX PRESETS (localStorage)
+        ===================================================================== */
+        function presetKey() { return `stemmix:${App.jobId}`; }
+        $('savePresetBtn').onclick = () => {
+            if (!App.stems.length) return;
+            const preset = {
+                master: $('masterVol').value / 100,
+                stems: Object.fromEntries(App.stems.map(s => [s.key, { vol: s.vol, muted: s.muted, solo: s.solo }])),
+            };
+            localStorage.setItem(presetKey(), JSON.stringify(preset));
+            toast('Mix preset saved for this track');
+        };
+        $('loadPresetBtn').onclick = () => {
+            const raw = localStorage.getItem(presetKey());
+            if (!raw) { toast('No saved preset for this track yet'); return; }
+            try {
+                const p = JSON.parse(raw);
+                $('masterVol').value = Math.round((p.master ?? 0.9) * 100);
+                if (App.audio.master) App.audio.master.gain.value = p.master ?? 0.9;
+                App.stems.forEach(s => {
+                    const v = p.stems[s.key]; if (!v) return;
+                    s.vol = v.vol; s.muted = v.muted; s.solo = v.solo;
+                    const slider = document.querySelector(`.vol-slider[data-stem="${s.key}"]`);
+                    if (slider) slider.value = Math.round(v.vol * 100);
+                    const mb = document.querySelector(`[data-ms="mute"][data-stem="${s.key}"]`);
+                    if (mb) mb.classList.toggle('muted', v.muted);
+                    const sb = document.querySelector(`[data-ms="solo"][data-stem="${s.key}"]`);
+                    if (sb) sb.classList.toggle('solo', v.solo);
+                });
+                applyGains();
+                toast('Preset loaded');
+            } catch { toast('Preset corrupted'); }
+        };
+
+        /* =====================================================================
+           §9 MIX EXPORT (server render)
+        ===================================================================== */
+        $('exportMixBtn').onclick = async () => {
+            if (!App.stems.length) return;
+            const fmt = 'wav';
+            const body = {
+                format: fmt,
+                master: $('masterVol').value / 100,
+                stems: Object.fromEntries(App.stems.map(s => {
+                    const anySolo = App.stems.some(x => x.solo);
+                    const audible = anySolo ? s.solo : !s.muted;
+                    return [s.key, audible ? s.vol : 0];
+                })),
+            };
+            $('exportMixBtn').disabled = true;
+            $('exportMixBtn').textContent = 'Rendering…';
+            try {
+                const res = await fetch(`/api/mix/${App.jobId}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body),
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || `HTTP ${res.status}`);
+                }
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = `mix.${fmt}`;
+                a.click();
+                URL.revokeObjectURL(a.href);
+                toast('Mix exported — check downloads');
+            } catch (e) {
+                toast(`Export failed: ${e.message}`, 4200);
+            } finally {
+                $('exportMixBtn').disabled = false;
+                $('exportMixBtn').textContent = '⬇ Export mix';
+            }
+        };
+
+        /* =====================================================================
+           §10 COMMAND PALETTE (⌘K)
+        ===================================================================== */
+        const palette = {
+            open: false, items: [], sel: 0,
+            async commands() {
+                const cmds = [
+                    { label: 'New split', hint: 'upload', run: () => navigate('#/upload') },
+                    { label: 'Open library', hint: 'library', run: () => navigate('#/library') },
+                ];
+                if (App.view === 'player') {
+                    cmds.push(
+                        { label: 'Play / pause', hint: 'space', run: () => App.audio.playing ? stopPlayback() : startPlayback() },
+                        { label: 'Mute all', hint: 'mix', run: () => $('muteAllBtn').click() },
+                        { label: 'Reset mix', hint: 'mix', run: () => $('resetMixBtn').click() },
+                        { label: 'Export mix', hint: 'export', run: () => $('exportMixBtn').click() },
+                    );
+                }
+                try {
+                    const res = await fetch('/api/jobs');
+                    const { jobs } = await res.json();
+                    jobs.slice(0, 8).forEach(j =>
+                        cmds.push({ label: `♪ ${j.name}`, hint: 'open', run: () => navigate(`#/job/${j.id}`) }));
+                } catch { }
+                return cmds;
+            },
+            async show() {
+                this.open = true;
+                $('palette').classList.add('open');
+                $('paletteInput').value = '';
+                this.items = await this.commands();
+                this.sel = 0;
+                this.render();
+                $('paletteInput').focus();
+            },
+            hide() { this.open = false; $('palette').classList.remove('open'); },
+            render() {
+                const q = $('paletteInput').value.toLowerCase();
+                const filtered = this.items.filter(i => i.label.toLowerCase().includes(q));
+                $('paletteList').innerHTML = filtered.length ? filtered.map((i, ix) => `
+                    <button class="palette-item ${ix === this.sel ? 'sel' : ''}" data-ix="${ix}">
+                        <span>${esc(i.label)}</span><span class="k">${i.hint}</span>
+                    </button>`).join('')
+                    : '<div class="palette-empty">No matches</div>';
+                this._filtered = filtered;
+                $('paletteList').querySelectorAll('.palette-item').forEach(btn =>
+                    btn.addEventListener('click', () => this.runIx(parseInt(btn.dataset.ix))));
+            },
+            runIx(ix) {
+                const item = this._filtered[ix];
+                if (!item) return;
+                this.hide();
+                item.run();
+            },
+        };
+
+        $('paletteBtn').onclick = () => palette.open ? palette.hide() : palette.show();
+        $('palette').addEventListener('click', (e) => { if (e.target.id === 'palette') palette.hide(); });
+        $('paletteInput').addEventListener('input', () => { palette.sel = 0; palette.render(); });
+        $('paletteInput').addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowDown') { e.preventDefault(); palette.sel = Math.min(palette.sel + 1, (palette._filtered?.length || 1) - 1); palette.render(); }
+            else if (e.key === 'ArrowUp') { e.preventDefault(); palette.sel = Math.max(palette.sel - 1, 0); palette.render(); }
+            else if (e.key === 'Enter') { e.preventDefault(); palette.runIx(palette.sel); }
+            else if (e.key === 'Escape') palette.hide();
         });
         document.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' && !$('playerView').classList.contains('hidden')) {
-                e.preventDefault(); playing ? stopPlayback() : startPlayback();
+            if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                e.preventDefault();
+                palette.open ? palette.hide() : palette.show();
             }
         });
 
-        // ================= reopen a completed job via ?job=<id> =================
-        (async () => {
-            const jobId = new URLSearchParams(location.search).get('job');
-            if (!jobId) return;
+        window.navigate = navigate;
+
+        /* =====================================================================
+           §11 BOOT
+        ===================================================================== */
+        (async function boot() {
+            const params = new URLSearchParams(location.search);
+            const legacyJob = params.get('job');
+            if (legacyJob) { history.replaceState(null, '', `#/job/${legacyJob}`); }
+            route(location.hash || '#/upload');
+
+            // sidebar system stats from /api/health
             try {
-                const res = await fetch(`/api/status/${jobId}`);
-                const data = await res.json();
-                if (data.status === 'completed') {
-                    $('uploadView').classList.add('hidden');
-                    buildPlayer(data);
-                } else if (data.status === 'processing' || data.status === 'queued') {
-                    $('uploadView').classList.add('hidden');
-                    $('processingView').classList.remove('hidden');
-                    $('procName').textContent = data.name || jobId;
-                    pollStatus(jobId);
-                }
-            } catch (e) { /* fall through to normal upload view */ }
+                const h = await (await fetch('/api/health')).json();
+                $('gpuText').textContent = h.gpu.available ? 'ready' : 'none';
+                $('queueText').textContent = h.queue_depth;
+                $('verText').textContent = 'v' + h.version;
+            } catch { }
+            // library badge
+            try {
+                const { jobs } = await (await fetch('/api/jobs')).json();
+                $('libCount').textContent = jobs.length || '';
+            } catch { }
         })();
     </script>
 </body>

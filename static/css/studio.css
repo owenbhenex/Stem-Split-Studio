@@ -1,0 +1,563 @@
+/* ==========================================================================
+   Multitrack DAW Studio & Mixer Styles — Stem Splitter Studio
+   ========================================================================== */
+
+.studio-console {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Master Transport Bar */
+.transport-panel {
+  padding: 1rem 1.5rem;
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  position: sticky;
+  top: 1rem;
+  z-index: 50;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.transport-left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.play-pause-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--brand-gradient);
+  border: none;
+  color: #fff;
+  font-size: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 20px var(--brand-glow);
+  transition: all var(--trans-fast);
+}
+
+.play-pause-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 0 25px var(--brand-glow);
+}
+
+.play-pause-btn:active {
+  transform: scale(0.95);
+}
+
+.transport-nav-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  font-size: 0.95rem;
+}
+
+.transport-nav-btn:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-medium);
+  color: var(--text-bright);
+}
+
+.transport-nav-btn.active {
+  border-color: var(--brand-primary);
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--brand-primary);
+}
+
+/* Timeline & Scrubber */
+.transport-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  min-width: 260px;
+}
+
+.timeline-scrubber {
+  position: relative;
+  height: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.timeline-track-bg {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: var(--surface-void);
+  border-radius: var(--radius-full);
+  border: 1px solid var(--border-subtle);
+}
+
+.timeline-track-fill {
+  position: absolute;
+  left: 0;
+  height: 6px;
+  background: var(--brand-gradient);
+  border-radius: var(--radius-full);
+  width: 0%;
+  pointer-events: none;
+}
+
+.timeline-playhead-handle {
+  position: absolute;
+  left: 0%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.8), 0 2px 4px rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%);
+  pointer-events: none;
+  transition: transform 0.05s ease;
+}
+
+.timeline-scrubber:hover .timeline-playhead-handle {
+  transform: translateX(-50%) scale(1.2);
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.timecode-display {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.timecode-current {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.02em;
+}
+
+.timecode-total {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* Master Controls Right */
+.transport-right {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  flex-shrink: 0;
+}
+
+.master-vol-group {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: var(--surface-void);
+  padding: 0.4rem 0.8rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+}
+
+.master-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.master-slider {
+  width: 90px;
+}
+
+/* Master Stereo VU Meter */
+.master-vu-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  height: 28px;
+  justify-content: center;
+}
+
+.vu-bar-channel {
+  width: 45px;
+  height: 5px;
+  background: var(--surface-void);
+  border-radius: 2px;
+  overflow: hidden;
+  border: 1px solid var(--border-subtle);
+}
+
+.vu-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #10b981 60%, #f59e0b 85%, #ef4444 100%);
+  transition: width 0.08s ease;
+}
+
+/* Global Actions Bar */
+.actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0.25rem;
+}
+
+.actions-left {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+/* ==========================================================================
+   Multitrack Channel Strip List
+   ========================================================================== */
+
+.tracklist-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.channel-strip {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: background var(--trans-fast), border-color var(--trans-fast);
+  position: relative;
+}
+
+.channel-strip:hover {
+  background: var(--surface-panel-alt);
+  border-color: var(--border-medium);
+}
+
+.channel-strip.is-muted {
+  opacity: 0.5;
+}
+
+.channel-strip.is-soloed {
+  border-color: rgba(234, 179, 8, 0.4);
+  box-shadow: 0 0 15px rgba(234, 179, 8, 0.1);
+}
+
+/* Strip Info / Identification */
+.strip-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 140px;
+  flex-shrink: 0;
+}
+
+.stem-indicator-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.strip-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.strip-name {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-bright);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.strip-meta {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+/* Mini Stem VU Meter */
+.strip-meter {
+  width: 4px;
+  height: 38px;
+  background: var(--surface-void);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+  flex-shrink: 0;
+  border: 1px solid var(--border-subtle);
+}
+
+.strip-meter-fill {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 0%;
+  background: linear-gradient(0deg, #10b981 60%, #f59e0b 85%, #ef4444 100%);
+  transition: height 0.08s ease;
+}
+
+/* Waveform Canvas Container */
+.strip-wave-container {
+  flex: 1;
+  height: 48px;
+  position: relative;
+  border-radius: var(--radius-sm);
+  background: var(--surface-void);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.strip-wave-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Loading overlay inside waveform container */
+.strip-wave-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: rgba(7, 9, 14, 0.65);
+  backdrop-filter: blur(2px);
+  z-index: 4;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.strip-loading-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--brand-primary);
+  border-radius: 50%;
+  animation: stripSpin 0.75s linear infinite;
+}
+
+@keyframes stripSpin {
+  to { transform: rotate(360deg); }
+}
+
+.channel-strip.is-solo-inactive {
+  opacity: 0.35;
+  filter: grayscale(0.2);
+}
+
+/* Hover scrub needle inside waveform */
+.strip-wave-cursor {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: rgba(255, 255, 255, 0.8);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s ease;
+  z-index: 5;
+}
+
+.strip-wave-container:hover .strip-wave-cursor {
+  opacity: 1;
+}
+
+.strip-wave-tooltip {
+  position: absolute;
+  top: 2px;
+  transform: translateX(-50%);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-medium);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 0.65rem;
+  color: var(--text-bright);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 6;
+}
+
+.strip-wave-container:hover .strip-wave-tooltip {
+  opacity: 1;
+}
+
+/* Strip Controls: Mute, Solo, Pan, Vol, Download */
+.strip-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-shrink: 0;
+}
+
+/* Tactile Mute and Solo square buttons */
+.toggle-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-medium);
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.toggle-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.toggle-btn.btn-mute.active {
+  background: #ef4444;
+  border-color: #f87171;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+}
+
+.toggle-btn.btn-solo.active {
+  background: #eab308;
+  border-color: #facc15;
+  color: #07090e;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+/* Pan Slider */
+.pan-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 60px;
+}
+
+.pan-slider {
+  width: 100%;
+  height: 4px;
+}
+
+.pan-label {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+}
+
+/* Channel Volume Slider */
+.fader-control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 95px;
+}
+
+.fader-slider {
+  flex: 1;
+}
+
+.fader-readout {
+  font-size: 0.68rem;
+  color: var(--text-secondary);
+  width: 38px;
+  text-align: right;
+}
+
+/* Download Stem Button */
+.strip-download-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 0.8rem;
+  transition: all var(--trans-fast);
+}
+
+.strip-download-btn:hover {
+  background: rgba(16, 185, 129, 0.15);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--status-success);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .strip-info {
+    width: 110px;
+  }
+  .fader-control {
+    width: 75px;
+  }
+  .pan-control {
+    display: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .transport-panel {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    position: relative;
+    top: 0;
+  }
+  .channel-strip {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+  .strip-wave-container {
+    width: 100%;
+    order: 3;
+  }
+}
