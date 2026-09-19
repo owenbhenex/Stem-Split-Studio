@@ -376,6 +376,14 @@
         }
         .palette-empty { padding: 22px; text-align: center; font-size: 13px; color: var(--text-3); }
 
+        .userchip { display: flex; align-items: center; gap: 9px; }
+        .avatar {
+            width: 30px; height: 30px; border-radius: 50%;
+            background: var(--surface-sunk); border: 1px solid var(--border);
+            display: inline-flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 600; color: var(--text-2);
+        }
+
         /* ============ Responsive ============ */
         @media (max-width: 920px) {
             #sidebar { width: 58px; padding: 20px 8px; }
@@ -439,6 +447,7 @@
                 <div class="topbar-sub" id="topSub">Up to 11-stem AI separation</div>
             </div>
             <div class="topbar-actions">
+                <span id="authSlot"></span>
                 <button class="btn sm" id="paletteBtn">Search<span class="mono" style="font-size:10px;color:var(--text-3)">⌘K</span></button>
             </div>
         </header>
@@ -852,17 +861,42 @@
                     <div class="job-row" data-job="${j.id}">
                         <div class="job-art">♪</div>
                         <div class="job-info">
-                            <div class="job-name">${esc(j.name)}</div>
+                            <div class="job-name" data-name="${j.id}">${esc(j.name)}</div>
                             <div class="job-meta">
                                 <span class="chip" style="padding:1px 9px">${j.quality}</span>
                                 <span>${j.stem_count} stems</span>
                                 <span>${timeAgo(j.timestamp)}</span>
                             </div>
                         </div>
+                        <button class="ms-btn" data-rename="${j.id}" title="Rename">✎</button>
+                        <button class="ms-btn" data-delete="${j.id}" title="Delete">✕</button>
                         <span style="color:var(--text-4);font-size:16px">→</span>
                     </div>`).join('');
                 list.querySelectorAll('.job-row').forEach(row =>
                     row.addEventListener('click', () => navigate(`#/job/${row.dataset.job}`)));
+                list.querySelectorAll('[data-rename]').forEach(btn =>
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const id = btn.dataset.rename;
+                        const current = document.querySelector(`[data-name="${id}"]`).textContent;
+                        const name = prompt('Rename track:', current);
+                        if (!name) return;
+                        const res = await fetch(`/api/jobs/${id}/rename`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name }),
+                        });
+                        if (res.ok) { toast('Renamed'); loadLibrary(); }
+                        else toast('Rename failed');
+                    }));
+                list.querySelectorAll('[data-delete]').forEach(btn =>
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
+                        const id = btn.dataset.delete;
+                        if (!confirm('Delete this job and its stems? (Also removes from Dropbox if linked)')) return;
+                        const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE' });
+                        if (res.ok) { toast('Deleted'); loadLibrary(); }
+                        else toast('Delete failed');
+                    }));
             } catch {
                 $('jobList').innerHTML = '<div class="empty-state"><div class="empty-title">Could not load library</div><div class="empty-sub">Is the server running?</div></div>';
             }
@@ -1277,30 +1311,84 @@
                 e.preventDefault();
                 palette.open ? palette.hide() : palette.show();
             }
+            if (e.key === 'Escape' && palette.open) palette.hide();
         });
+
+        /* =====================================================================
+           §11 AUTH + BOOT
+        ===================================================================== */
+        let AUTH = { authenticated: false, user: null, dropbox_configured: false, dropbox_linked: false };
+
+        async function checkAuth() {
+            try {
+                const r = await fetch('/api/auth/status');
+                AUTH = await r.json();
+            } catch { AUTH.authenticated = false; }
+            renderAuthUI();
+            return AUTH.authenticated;
+        }
+
+        function renderAuthUI() {
+            const el = $('authSlot');
+            if (!el) return;
+            if (AUTH.authenticated && AUTH.user) {
+                const initials = (AUTH.user.name || '?').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+                const cloud = AUTH.dropbox_linked
+                    ? `<span class="chip" title="Stems sync to your Dropbox"><span class="dot" style="background:#3d8b63"></span>Dropbox</span>`
+                    : (AUTH.dropbox_configured ? `<a class="chip" href="/api/auth/login" style="text-decoration:none">Link Dropbox</a>` : '');
+                el.innerHTML = `
+                    <div class="userchip">
+                        ${cloud}
+                        <span class="avatar" title="${esc(AUTH.user.name)}">${esc(initials)}</span>
+                        <button class="ms-btn" id="logoutBtn" title="Sign out">⏻</button>
+                    </div>`;
+                const lb = $('logoutBtn');
+                if (lb) lb.onclick = async () => {
+                    await fetch('/api/auth/logout', { method: 'POST' });
+                    location.reload();
+                };
+            } else {
+                el.innerHTML = `<a class="btn sm primary" href="/api/auth/login" style="text-decoration:none">Sign in</a>`;
+            }
+        }
+
+        async function apiGuard(fetchFn) {
+            // retry-once wrapper: if 401, try silent re-login (local mode), then retry
+            let res = await fetchFn();
+            if (res.status === 401) {
+                await fetch('/api/auth/login');  // local mode auto-session
+                res = await fetchFn();
+            }
+            return res;
+        }
 
         window.navigate = navigate;
 
-        /* =====================================================================
-           §11 BOOT
-        ===================================================================== */
         (async function boot() {
+            const authed = await checkAuth();
             const params = new URLSearchParams(location.search);
             const legacyJob = params.get('job');
             if (legacyJob) { history.replaceState(null, '', `#/job/${legacyJob}`); }
             route(location.hash || '#/upload');
 
-            // sidebar system stats from /api/health
+            // silent local-mode login if needed (keeps old UX until Dropbox is configured)
+            if (!authed) {
+                const r = await fetch('/api/auth/login');
+                if (r.ok) await checkAuth();
+            }
+            // library badge (after potential login — avoids a spurious 401 in console)
+            if (AUTH.authenticated) {
+                try {
+                    const { jobs } = await (await fetch('/api/jobs')).json();
+                    $('libCount').textContent = jobs.length || '';
+                } catch { }
+            }
+
             try {
                 const h = await (await fetch('/api/health')).json();
                 $('gpuText').textContent = h.gpu.available ? 'ready' : 'none';
                 $('queueText').textContent = h.queue_depth;
                 $('verText').textContent = 'v' + h.version;
-            } catch { }
-            // library badge
-            try {
-                const { jobs } = await (await fetch('/api/jobs')).json();
-                $('libCount').textContent = jobs.length || '';
             } catch { }
         })();
     </script>

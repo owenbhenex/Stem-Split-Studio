@@ -17,6 +17,7 @@ server restart doesn't leave the UI polling forever.
 import os
 import re
 import json
+import time
 import uuid
 import queue
 import shutil
@@ -33,7 +34,7 @@ import soundfile as sf
 import numpy as np
 
 import torch
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -156,12 +157,43 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Stem Splitter Studio", lifespan=lifespan)
 
+# Security: auth guard + tightened CORS --------------------------------------------
+from auth import (
+    SESSION_COOKIE, TOKENS, dropbox_configured, get_valid_access_token,
+    create_session, resolve_session, drop_session, session_middleware_dispatch,
+    make_pkce, build_authorize_url, exchange_code, get_dropbox_account,
+)
+import cloud
+from cloud import SYNC, remote_job_path
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+
+class AuthGuardMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        path = request.url.path
+        if (path.startswith("/api/") and not path.startswith("/api/auth/")
+                and path != "/api/health"):
+            sess = resolve_session(request.cookies.get(SESSION_COOKIE))
+            if not sess:
+                return JSONResponse({"detail": "Not authenticated"}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(AuthGuardMiddleware)
+
+CORS_ORIGINS = os.environ.get("STEM_CORS_ORIGINS", "http://127.0.0.1:8000,http://localhost:8000").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[o.strip() for o in CORS_ORIGINS if o.strip()],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type"],
 )
+
+# Per-user job ownership: JOBS entries gain "owner" = subject id.
+# Session header injected via dependency.
+from fastapi import Depends
 
 # --------------------------------------------------------------------------------------
 # Job state
@@ -176,7 +208,7 @@ def _persist(job: dict):
     try:
         (OUTPUT_DIR / job["id"]).mkdir(parents=True, exist_ok=True)
         (OUTPUT_DIR / job["id"] / "state.json").write_text(
-            json.dumps({k: job.get(k) for k in ("id", "display", "quality", "state", "stage", "error", "stems")}),
+            json.dumps({k: job.get(k) for k in ("id", "owner", "display", "quality", "state", "stage", "error", "stems")}),
             encoding="utf-8",
         )
     except Exception:
@@ -358,11 +390,26 @@ def run_pipeline(job: dict):
 
     _update(job, state="completed", stage="Done", stems=stems)
 
+    # Cloud sync: push stems + manifest to the owner's Dropbox (best-effort)
+    owner = job.get("owner")
+    if owner and cloud_sync_enabled(owner):
+        try:
+            SYNC.push_job_async(owner, get_valid_access_token, job["id"],
+                                OUTPUT_DIR / job["id"],
+                                {"id": job["id"], "display": job.get("display"), "stems": stems})
+        except Exception:
+            pass
+
     # Input no longer needed once the split succeeded
     try:
         src.unlink()
     except OSError:
         pass
+
+
+def cloud_sync_enabled(sub: str) -> bool:
+    """Cloud sync is on when the subject has a stored Dropbox token."""
+    return TOKENS.load(sub) is not None
 
 
 def gpu_worker():
@@ -397,8 +444,16 @@ def _prune_old_jobs():
 # --------------------------------------------------------------------------------------
 # API
 # --------------------------------------------------------------------------------------
+async def _session(request: Request) -> dict:
+    sess = resolve_session(request.cookies.get(SESSION_COOKIE))
+    if not sess:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return sess
+
+
 @app.post("/api/upload")
-async def upload_audio(file: UploadFile = File(...), quality: str = Form("fast")):
+async def upload_audio(request: Request, file: UploadFile = File(...), quality: str = Form("fast")):
+    sess = await _session(request)
     display = file.filename or "track"
     ext = os.path.splitext(display)[1].lower()
     if ext not in ALLOWED_EXT:
@@ -420,7 +475,7 @@ async def upload_audio(file: UploadFile = File(...), quality: str = Form("fast")
             buf.write(chunk)
 
     job = {
-        "id": job_id, "display": display, "file": saved.name, "quality": quality,
+        "id": job_id, "owner": sess["sub"], "display": display, "file": saved.name, "quality": quality,
         "state": "queued", "stage": "Queued", "error": None, "stems": [],
     }
     with JOBS_LOCK:
@@ -430,16 +485,21 @@ async def upload_audio(file: UploadFile = File(...), quality: str = Form("fast")
     return {"status": "queued", "job_id": job_id}
 
 
-def _load_job(job_id: str):
+def _load_job(job_id: str, owner: str | None = None):
     with JOBS_LOCK:
         job = JOBS.get(job_id)
     if job:
+        if owner and job.get("owner") not in (None, owner):
+            return None
         return job
     job_dir = OUTPUT_DIR / job_id
     state_file = job_dir / "state.json"
     if state_file.exists():
         try:
-            return json.loads(state_file.read_text(encoding="utf-8"))
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+            if owner and data.get("owner") not in (None, owner):
+                return None
+            return data
         except Exception:
             pass
     # Fallback: reconstruct from existing wav files if directory exists
@@ -465,35 +525,15 @@ def _load_job(job_id: str):
 
 
 @app.get("/api/jobs")
-async def list_jobs():
-    """Return a list of completed sessions stored on disk."""
+async def list_jobs(request: Request):
+    """Jobs owned by the session user (legacy ownerless jobs treated as local-user's)."""
+    sess = await _session(request)
     results = []
     if not OUTPUT_DIR.exists():
         return {"jobs": []}
     for item in OUTPUT_DIR.iterdir():
         if item.is_dir():
-            job = _load_job(item.name)
-            if job and job.get("state") == "completed":
-                results.append({
-                    "id": job["id"],
-                    "name": job.get("display", item.name),
-                    "quality": job.get("quality", "fast"),
-                    "stem_count": len(job.get("stems", [])),
-                    "timestamp": int(item.stat().st_mtime * 1000),
-                })
-    results.sort(key=lambda x: x["timestamp"], reverse=True)
-    return {"jobs": results}
-
-
-@app.get("/api/jobs")
-async def list_jobs():
-    """Return a list of completed sessions stored on disk."""
-    results = []
-    if not OUTPUT_DIR.exists():
-        return {"jobs": []}
-    for item in OUTPUT_DIR.iterdir():
-        if item.is_dir():
-            job = _load_job(item.name)
+            job = _load_job(item.name, owner=sess["sub"])
             if job and job.get("state") == "completed":
                 results.append({
                     "id": job["id"],
@@ -507,8 +547,9 @@ async def list_jobs():
 
 
 @app.get("/api/status/{job_id}")
-async def get_status(job_id: str):
-    job = _load_job(job_id)
+async def get_status(job_id: str, request: Request):
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
     if job is None:
         return {"status": "unknown"}
     resp = {"status": job["state"], "stage": job.get("stage", ""), "name": job.get("display", ""), "quality": job.get("quality", "fast")}
@@ -521,7 +562,11 @@ async def get_status(job_id: str):
 
 
 @app.get("/api/download/{job_id}/{filename}")
-async def download_stem(job_id: str, filename: str):
+async def download_stem(job_id: str, filename: str, request: Request):
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
+    if job is None:
+        return JSONResponse(status_code=404, content={"message": "Not found"})
     # Block path traversal and weird names outright
     if not re.fullmatch(r"[A-Za-z0-9_.\-]+", filename) or ".." in filename:
         return JSONResponse(status_code=400, content={"message": "Invalid filename"})
@@ -534,8 +579,9 @@ async def download_stem(job_id: str, filename: str):
 
 
 @app.get("/api/download/{job_id}")
-async def download_all(job_id: str):
-    job = _load_job(job_id)
+async def download_all(job_id: str, request: Request):
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
     if job is None or job["state"] != "completed":
         return JSONResponse(status_code=404, content={"message": "Job not found or not completed"})
     job_dir = OUTPUT_DIR / job_id
@@ -559,7 +605,7 @@ async def download_all(job_id: str):
 # System features: mix render, analysis, health
 # --------------------------------------------------------------------------------------
 @app.post("/api/mix/{job_id}")
-async def render_mix(job_id: str, body: dict = None):
+async def render_mix(job_id: str, request: Request, body: dict = None):
     """
     Render a custom mix server-side with ffmpeg from the client's per-stem
     volumes/mutes. Body: { "stems": {"vocals": 0.9, "drums": 0.0, ...},
@@ -574,7 +620,7 @@ async def render_mix(job_id: str, body: dict = None):
     if not isinstance(stem_gains, dict) or not stem_gains:
         return JSONResponse(status_code=400, content={"message": "stems map required"})
 
-    job = _load_job(job_id)
+    job = _load_job(job_id, owner=(await _session(request))["sub"])
     if job is None or job["state"] != "completed":
         return JSONResponse(status_code=404, content={"message": "Job not found or not completed"})
     job_dir = OUTPUT_DIR / job_id
@@ -618,9 +664,10 @@ async def render_mix(job_id: str, body: dict = None):
 
 
 @app.get("/api/analysis/{job_id}")
-async def analyze_job(job_id: str):
+async def analyze_job(job_id: str, request: Request):
     """Duration, sample rate, channels, and BPM estimate (from the vocals stem)."""
-    job = _load_job(job_id)
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
     if job is None or job["state"] != "completed":
         return JSONResponse(status_code=404, content={"message": "Job not found or not completed"})
     job_dir = OUTPUT_DIR / job_id
@@ -652,6 +699,179 @@ async def analyze_job(job_id: str):
     }
     cache.write_text(json.dumps(result), encoding="utf-8")
     return result
+
+
+# --------------------------------------------------------------------------------------
+# Auth routes (public — exempt from the session guard)
+# --------------------------------------------------------------------------------------
+import secrets as _secrets
+from fastapi.responses import RedirectResponse
+
+# In-flight OAuth states: state -> {verifier, redirect_uri}
+OAUTH_STATES: dict[str, dict] = {}
+OAUTH_TTL = 600
+
+
+@app.get("/api/auth/status")
+async def auth_status(request: Request):
+    sess = resolve_session(request.cookies.get(SESSION_COOKIE))
+    return {
+        "authenticated": bool(sess),
+        "user": {"name": sess["name"], "email": sess.get("email")} if sess else None,
+        "dropbox_configured": dropbox_configured(),
+        "dropbox_linked": bool(sess and TOKENS.load(sess["sub"])),
+    }
+
+
+@app.get("/api/auth/login")
+async def auth_login(request: Request):
+    """Start OAuth. If Dropbox isn't configured, create a local session."""
+    if not dropbox_configured():
+        # Local mode: single-user session (works offline)
+        sub = "local-user"
+        sid = create_session(sub, "Local user", None)
+        resp = JSONResponse({"status": "ok", "mode": "local"})
+        resp.set_cookie(SESSION_COOKIE, sid, httponly=True, samesite="lax",
+                        max_age=24 * 3600, path="/")
+        return resp
+
+    redirect_uri = str(request.base_url).rstrip("/") + "/api/auth/callback"
+    state = _secrets.token_urlsafe(24)
+    verifier, challenge = make_pkce()
+    OAUTH_STATES[state] = {"verifier": verifier, "redirect_uri": redirect_uri, "exp": time.time() + OAUTH_TTL}
+    # prune expired states
+    for k in [k for k, v in OAUTH_STATES.items() if v["exp"] < time.time()]:
+        OAUTH_STATES.pop(k, None)
+    return RedirectResponse(build_authorize_url(redirect_uri, state, challenge))
+
+
+@app.get("/api/auth/callback")
+async def auth_callback(code: str = "", state: str = "", error: str = ""):
+    import time as _time
+    if error:
+        return JSONResponse(status_code=400, content={"message": f"OAuth denied: {error}"})
+    st = OAUTH_STATES.pop(state, None)
+    if not st:
+        return JSONResponse(status_code=400, content={"message": "Unknown or expired OAuth state"})
+    try:
+        tokens = exchange_code(code, st["redirect_uri"], st["verifier"])
+        account = get_dropbox_account(tokens["access_token"])
+    except Exception as e:
+        return JSONResponse(status_code=502, content={"message": f"Dropbox auth failed: {e}"})
+
+    # persist tokens encrypted
+    TOKENS.save(account["sub"], {
+        "access_token": tokens["access_token"],
+        "refresh_token": tokens.get("refresh_token"),
+        "expires_at": _time.time() + int(tokens.get("expires_in", 14400)),
+        "account": account,
+    })
+    sid = create_session(account["sub"], account["name"], account["email"])
+    resp = RedirectResponse("/")
+    resp.set_cookie(SESSION_COOKIE, sid, httponly=True, samesite="lax",
+                    max_age=24 * 3600, path="/")
+    return resp
+
+
+@app.post("/api/auth/logout")
+async def auth_logout(request: Request):
+    drop_session(request.cookies.get(SESSION_COOKIE))
+    resp = JSONResponse({"status": "ok"})
+    resp.delete_cookie(SESSION_COOKIE, path="/")
+    return resp
+
+
+# --------------------------------------------------------------------------------------
+# New features: delete, rename, cloud pull, cloud space
+# --------------------------------------------------------------------------------------
+@app.delete("/api/jobs/{job_id}")
+async def delete_job(job_id: str, request: Request):
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
+    if job is None:
+        return JSONResponse(status_code=404, content={"message": "Job not found"})
+    with JOBS_LOCK:
+        JOBS.pop(job_id, None)
+    shutil.rmtree(OUTPUT_DIR / job_id, ignore_errors=True)
+    # also remove from Dropbox if linked
+    if TOKENS.load(sess["sub"]):
+        token = get_valid_access_token(sess["sub"])
+        if token:
+            try:
+                cloud.delete_path(token, remote_job_path(job_id))
+            except Exception:
+                pass
+    return {"status": "deleted"}
+
+
+@app.post("/api/jobs/{job_id}/rename")
+async def rename_job(job_id: str, request: Request, body: dict = None):
+    sess = await _session(request)
+    job = _load_job(job_id, owner=sess["sub"])
+    if job is None:
+        return JSONResponse(status_code=404, content={"message": "Job not found"})
+    name = (body or {}).get("name", "").strip()
+    if not name or len(name) > 120:
+        return JSONResponse(status_code=400, content={"message": "name required (1-120 chars)"})
+    job["display"] = name
+    _persist(job)
+    with JOBS_LOCK:
+        JOBS[job_id] = job
+    return {"status": "renamed", "name": name}
+
+
+@app.post("/api/jobs/{job_id}/pull")
+async def pull_job_from_cloud(job_id: str, request: Request):
+    """Download a job's stems from Dropbox to local storage."""
+    sess = await _session(request)
+    token = get_valid_access_token(sess["sub"])
+    if not token:
+        return JSONResponse(status_code=400, content={"message": "Dropbox not linked"})
+    job_dir = OUTPUT_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        entries = cloud.list_folder(token, remote_job_path(job_id))
+        pulled = 0
+        for e in entries:
+            if e.get(".tag") == "file" and e["name"].endswith((".wav", ".json")):
+                cloud.download_file(token, e["path_lower"], job_dir / e["name"])
+                pulled += 1
+        if pulled == 0:
+            return JSONResponse(status_code=404, content={"message": "Nothing in cloud for this job"})
+        return {"status": "pulled", "files": pulled}
+    except cloud.DropboxError as e:
+        return JSONResponse(status_code=502, content={"message": str(e)})
+
+
+@app.get("/api/cloud/space")
+async def cloud_space(request: Request):
+    sess = await _session(request)
+    token = get_valid_access_token(sess["sub"])
+    if not token:
+        return {"linked": False}
+    try:
+        usage = cloud.get_space_usage(token)
+        return {"linked": True, **usage}
+    except Exception:
+        return {"linked": True, "error": "usage unavailable"}
+
+
+@app.get("/api/cloud/jobs")
+async def cloud_jobs(request: Request):
+    """List jobs present in the user's Dropbox (merged view for the Library)."""
+    sess = await _session(request)
+    token = get_valid_access_token(sess["sub"])
+    if not token:
+        return {"linked": False, "jobs": []}
+    try:
+        entries = cloud.list_folder(token, cloud.ROOT)
+        jobs = []
+        for e in entries:
+            if e.get(".tag") == "folder":
+                jobs.append({"id": e["name"], "in_cloud": True})
+        return {"linked": True, "jobs": jobs}
+    except cloud.DropboxError as e:
+        return {"linked": True, "jobs": [], "error": str(e)}
 
 
 @app.get("/api/health")
